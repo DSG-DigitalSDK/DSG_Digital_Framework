@@ -1,0 +1,12 @@
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\bin\Debug\net8.0\DSG_DataBase.deps.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\bin\Debug\net8.0\DSG_DataBase.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\bin\Debug\net8.0\DSG_DataBase.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.AssemblyInfoInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.AssemblyInfo.cs
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.csproj.CoreCompileInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.sourcelink.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\refint\DSG_DataBase.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\DSG_DataBase.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Database\obj\Debug\net8.0\ref\DSG_DataBase.dll

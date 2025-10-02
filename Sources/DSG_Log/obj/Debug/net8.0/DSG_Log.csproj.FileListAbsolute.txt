@@ -1,0 +1,13 @@
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\bin\Debug\net8.0\DSG_Log.deps.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\bin\Debug\net8.0\DSG_Log.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\bin\Debug\net8.0\DSG_Log.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.AssemblyInfoInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.AssemblyInfo.cs
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.csproj.CoreCompileInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.sourcelink.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\refint\DSG_Log.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\ref\DSG_Log.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Log\obj\Debug\net8.0\DSG_Log.csproj.AssemblyReference.cache

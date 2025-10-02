@@ -1,0 +1,12 @@
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\bin\Debug\net8.0\DSG_Drivers.deps.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\bin\Debug\net8.0\DSG_Drivers.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\bin\Debug\net8.0\DSG_Drivers.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.AssemblyInfoInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.AssemblyInfo.cs
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.csproj.CoreCompileInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.sourcelink.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\refint\DSG_Drivers.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\DSG_Drivers.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Drivers\obj\Debug\net8.0\ref\DSG_Drivers.dll

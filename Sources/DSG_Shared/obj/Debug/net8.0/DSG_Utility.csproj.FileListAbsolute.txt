@@ -1,0 +1,12 @@
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\bin\Debug\net8.0\DSG_Utility.deps.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\bin\Debug\net8.0\DSG_Utility.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\bin\Debug\net8.0\DSG_Utility.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.AssemblyInfoInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.AssemblyInfo.cs
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.csproj.CoreCompileInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.sourcelink.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\refint\DSG_Utility.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\DSG_Utility.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Shared\obj\Debug\net8.0\ref\DSG_Utility.dll

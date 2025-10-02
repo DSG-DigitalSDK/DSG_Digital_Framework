@@ -1,0 +1,13 @@
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\bin\Debug\net8.0\DSG_Streaming.deps.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\bin\Debug\net8.0\DSG_Streaming.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\bin\Debug\net8.0\DSG_Streaming.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.csproj.AssemblyReference.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.AssemblyInfoInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.AssemblyInfo.cs
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.csproj.CoreCompileInputs.cache
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.sourcelink.json
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\refint\DSG_Streaming.dll
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\DSG_Streaming.pdb
+C:\Projects\DSG\DSG_Digital_Framwork\DSG_Streaming\obj\Debug\net8.0\ref\DSG_Streaming.dll

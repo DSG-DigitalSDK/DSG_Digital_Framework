@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DSG_Database\DSG_DataBase.csproj" />
+    <ProjectReference Include="..\DSG_Drivers\DSG_Drivers.csproj" />
+    <ProjectReference Include="..\DSG_Imaging\DSG_Imaging.csproj" />
+    <ProjectReference Include="..\DSG_Log\DSG_Log.csproj" />
+    <ProjectReference Include="..\DSG_Shared\DSG_Base.csproj" />
+    <ProjectReference Include="..\DSG_Streaming\DSG_Streaming.csproj" />
+  </ItemGroup>
+
+</Project>
