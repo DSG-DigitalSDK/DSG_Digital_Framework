@@ -1,2 +1,2 @@
-# DSG_Digital_Framwork
+# DSG_Digital_Framework
 .NET collection of utility, drivers, and interfaces
