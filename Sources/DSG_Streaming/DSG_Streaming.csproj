@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="VNC\" />
     <Folder Include="VLC\" />
     <Folder Include="Proto\" />
   </ItemGroup>

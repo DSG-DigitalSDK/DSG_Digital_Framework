@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DSG_Log\DSG_Log.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -9,11 +9,11 @@ namespace DSG
 {
     public interface ICreatable
     {
-        Dictionary<string, object> CreationParameters { get; set; }
-        Task<OperationResult> CreateAsync();
-        OperationResult Create();
-        Task<OperationResult> DestroyAsync();
-        OperationResult Destroy();
+        Dictionary<string, object> CreationParameters { get; }
+        Task<Result> CreateAsync();
+        Result Create();
+        Task<Result> DestroyAsync();
+        Result Destroy();
 
         bool Initialized { get; }
         string Name { get; }

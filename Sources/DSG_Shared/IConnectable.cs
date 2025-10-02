@@ -9,17 +9,17 @@ namespace DSG
 {
     public interface IConnectable
     {
-        Task<OperationResult> ConnectAsync();
-        OperationResult Connect();
-        Task<OperationResult> DisconnectAsync();
-        OperationResult Disconnect();
+        Task<Result> ConnectAsync();
+        Result Connect();
+        Task<Result> DisconnectAsync();
+        Result Disconnect();
         bool Connected { get; }
         string ConnectionName { get; }
 
-        public Task<OperationResult> ReadDataAsync();
-        public OperationResult ReadData();
-        public Task<OperationResult> WriteDataAsync();
-        public OperationResult WriteData();    
+        public Task<Result> ReadDataAsync();
+        public Result ReadData();
+        public Task<Result> WriteDataAsync();
+        public Result WriteData();    
 
         public int msConnectionTimeout { get; }
         public int msReadTimeout { get; }
