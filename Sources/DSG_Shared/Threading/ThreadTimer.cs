@@ -15,9 +15,9 @@ namespace DSG.Threading
     /// Encapsulates generic task timer behavior
     /// </summary>
     /// <typeparam name="T">class instance to store</typeparam>
-    public class ThreadTimer : CreateBase
+    public class ThreadBase : CreateBase
     {
-        string sC = nameof(ThreadTimer);
+        string sC = nameof(ThreadBase);
 
         public int msPollingTime { get; set; } = 1000;
         public bool PollingAutomaticStart { get; set; } = true;

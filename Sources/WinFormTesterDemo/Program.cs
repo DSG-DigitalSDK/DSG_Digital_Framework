@@ -30,7 +30,10 @@ namespace WinFormTesterDemo
                 ConnectionName = "SerialTest",
                 ConnectionString = "COM1/57600/ODD/7/1/NONE",
                 StreamMode = DSG.Base.StreamMode.Text,
+                PollingReadMs = 1000,
+                PollingWriteMs= 500,
                 UsePollingReader = true,
+                UsePollingWriter = false,
             })
             using (SerialPort oSer2 = new DSG.Drivers.SerialPort.SerialPort()
             {
@@ -38,23 +41,32 @@ namespace WinFormTesterDemo
                 ConnectionName = "SerialTest",
                 ConnectionString = "COM2/57600/ODD/7/1/NONE",
                 StreamMode = DSG.Base.StreamMode.Text,
-                UsePollingReader = false
+                PollingReadMs = 1000,
+                PollingWriteMs = 0,
+                UsePollingReader = false,
+                UsePollingWriter = true,
             })
             {
                 oSer1.OnRead += ((s, e) =>
                     {
                         string sMsg1 = (e.Result.Tag as DataBuffer)?.ToStringAscii();
                         string sMsg2 = (e.Result.Tag?.ToString()) ?? "BOH!";
-                        LogMan.Message(className, sMethod, sMsg1 ?? sMsg2);
+                        LogMan.Message(className, sMethod, $"Readed : {sMsg1 ?? sMsg2}");
                     });
-                oSer1.Connect();
+                oSer2.OnWrite += ((s, e) => LogMan.Message(className,sMethod, $"Written : { e.Result.Tag?.ToString()}"));
+                for (int i = 0; i < 10; i++)
+                {
+                    oSer2.EnqueueWriteData($"{i:f0} : Ciao!");
+                }
                 oSer2.Connect();
+                Thread.Sleep(2500);
+                oSer1.Connect();
                 Task.Run(() =>
                 {
-                    for (int i = 0; i < 10; i++)
+                    for (int i = 10; i < 100; i++)
                     {
-                        oSer2.WriteData($"{i:f0} : Ciao!");
-                        Thread.Sleep(1500);
+                        oSer2.EnqueueWriteData($"{i:f0} : Ciao!");
+                        Thread.Sleep(250);
                     }
                 });
 

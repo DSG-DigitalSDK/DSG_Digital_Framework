@@ -13,7 +13,7 @@ using DSG_Shared.Base;
 
 namespace DSG.Drivers.SerialPort
 {
-    public class SerialPort : ConnectableBaseReader
+    public class SerialPort : ConnectableBasePolling
     {
         static readonly string sClassName = nameof(SerialPort);
 
@@ -124,9 +124,9 @@ namespace DSG.Drivers.SerialPort
             oSerialPort.Handshake = eHandshake;
             if (ReadTimeoutMs > 0)
                 oSerialPort.ReadTimeout = ReadTimeoutMs;
-            if (WriteBufferSize > 0)
+            if (WriteTimeoutMs > 0)
                 oSerialPort.WriteTimeout = WriteTimeoutMs;
-            if (WriteTimeoutMs > 0 )
+            if (ReadBufferSize > 0 )
                 oSerialPort.ReadBufferSize = ReadBufferSize;
             if (WriteBufferSize > 0)
                 oSerialPort.WriteBufferSize = WriteBufferSize;
