@@ -222,6 +222,11 @@ namespace DSG_Shared.Base
             string sMethod = nameof(WriteData);
             try
             {
+                if (oObj == null)
+                {
+                    LogMan.Error(sC, sMethod, $"{sID} : object null");
+                    return Result.CreateResultError(OperationResult.Error, "null object",0);
+                }
                 lock (ConnLocker)
                 {
                     if (!Connected)

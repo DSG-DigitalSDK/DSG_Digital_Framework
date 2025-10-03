@@ -54,7 +54,7 @@ namespace WinFormTesterDemo
                         LogMan.Message(className, sMethod, $"Readed : {sMsg1 ?? sMsg2}");
                     });
                 oSer2.OnWrite += ((s, e) => LogMan.Message(className,sMethod, $"Written : { e.Result.Tag?.ToString()}"));
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 200; i++)
                 {
                     oSer2.EnqueueWriteData($"{i:f0} : Ciao!");
                 }

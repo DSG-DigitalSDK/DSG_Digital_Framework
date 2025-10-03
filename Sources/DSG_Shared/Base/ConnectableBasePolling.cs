@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DSG.Threading;
 using DSG.Base;
 using System.Collections.Concurrent;
+using DataExchange;
 
 namespace DSG_Shared.Base
 {
@@ -22,9 +23,9 @@ namespace DSG_Shared.Base
         public bool UsePollingWriter { get; set; } = true;
         public int PollingWriteMs { get; set; } = 1000;
 
-        ConcurrentQueue<object> oQueue = new ConcurrentQueue<object>();
+        QueueHandler<object> oQueue = new  QueueHandler<object>();
         public int WriteQueueLength => oQueue.Count;
-
+        
         public ConnectableBasePolling()
         {
             OnCreate += ConnectableBaseReader_OnCreate;
@@ -120,10 +121,8 @@ namespace DSG_Shared.Base
             string sM = nameof(TaskWriteData);
             while (oQueue.Count > 0)
             {
-                if (oQueue.TryDequeue(out var obj))
-                {
-                    var res = WriteData(obj);                    
-                }
+                var obj = oQueue.Dequeue();
+                var res = WriteData(obj);                    
                 if (PollingWriteMs > 0)
                 {
                     Thread.Sleep(PollingWriteMs);  
