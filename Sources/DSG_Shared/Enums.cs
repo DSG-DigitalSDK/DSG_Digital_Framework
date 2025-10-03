@@ -16,6 +16,32 @@ namespace DSG.Base
         ErrorTimeout,
     }
 
+    public enum StreamMode
+    {
+        Text,
+        Binary
+    }
 
-
+    public enum Params
+    {
+        Unknown = 0,
+        Name,
+        ThrowExceptions,
+        ConnectionName,
+        ConnectionTimeout,
+        ConnectionReadTimeout,
+        ConnectionWriteTimeout,
+        ConnectionString,
+        ConnectionReadBufferSize,
+        ConnectionWriteBufferSize,
+        WriteTextNewLine,
+        ReadTextNewLine,
+        TextNewLine,
+        TextEncoding,
+        StreamMode,
+        TaskRead,
+        TaskReadPolling,
+        TaskWrite,
+        TaskWritePolling,
+    }
 }

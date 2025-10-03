@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSG.Base
+namespace DSG_Shared.Base
 {
-    public class DisposableBase : IDisposable
+    public abstract class DisposableBase : IDisposable
     {
         static readonly string className = nameof(DisposableBase);
 

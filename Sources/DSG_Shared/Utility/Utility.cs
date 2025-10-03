@@ -1,7 +1,7 @@
-﻿namespace DSG_Shared.Utility
+﻿namespace DSG.Base
 {
     public static class Utility
     {
-
+        
     }
 }
