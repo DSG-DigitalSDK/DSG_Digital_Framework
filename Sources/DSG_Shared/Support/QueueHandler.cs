@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DataExchange
+namespace DSG.Shared
 {
     /// <summary>
     /// Manages a queue of objects

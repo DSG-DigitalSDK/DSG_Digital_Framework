@@ -5,16 +5,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DSG.Threading;
-using DSG.Base;
 using System.Collections.Concurrent;
-using DataExchange;
+using DSG.Shared;
+using DSG.IO;
+using DSG.Base;
+using Result = DSG.Base.Result;
 
-namespace DSG_Shared.Base
+namespace DSG.IO
 {
     public abstract class ConnectableBasePolling : ConnectableBase
     {
         static string sC = nameof(ConnectableBasePolling);   
         
+
         ThreadBase oReadThread = new ThreadBase();
         ThreadBase oWriteThread = new ThreadBase();
 
@@ -28,44 +31,36 @@ namespace DSG_Shared.Base
         
         public ConnectableBasePolling()
         {
-            OnCreate += ConnectableBaseReader_OnCreate;
-            OnDestroy += ConnectableBaseReader_OnDestroy;
-            OnConnect += ConnectableBaseReader_OnConnect;
-            OnDisconnect += ConnectableBaseReader_OnDisconnect;
             oReadThread.OnWakeup += TaskReadData;
             oWriteThread.OnSignal += TaskWriteData;
         }
 
-       
-
-        private void ConnectableBaseReader_OnCreate(object? sender, EventArgs e)
+        protected override Result CreateImpl()
         {
             if (UsePollingReader)
             {
                 oReadThread.Name = $"{Name}.Reader";
-                oReadThread.msPollingTime = PollingReadMs;
-                oReadThread.AllowTaskOverlap = false;
-                oReadThread.PollingAutomaticStart = false;    
+                oReadThread.WakeupTimeMs = (uint)PollingReadMs;
                 oReadThread.Create();
             }
             if (UsePollingWriter)
             {
                 oWriteThread.Name = $"{Name}.Writer";
-                oWriteThread.msPollingTime = PollingWriteMs;
-                oWriteThread.AllowTaskOverlap = false;
-                oWriteThread.PollingAutomaticStart = false;
+                oWriteThread.WakeupTimeMs = (uint)PollingWriteMs;
                 oWriteThread.Create();
             }
+            return Result.CreateResultSuccess();
         }
 
-        private void ConnectableBaseReader_OnDestroy(object? sender, EventArgs e)
+        protected override Result DestroyImpl()
         {
             oReadThread.Destroy();
             oWriteThread.Destroy();
             oQueue.Clear();
+            return Result.CreateResultSuccess();
         }
 
-        private void ConnectableBaseReader_OnConnect(object? sender, EventArgs e)
+        protected override Result ConnectImpl()
         {
             if (UsePollingReader)
             {
@@ -75,9 +70,11 @@ namespace DSG_Shared.Base
             {
                 oWriteThread.TimerStart();
             }
+            return Result.CreateResultSuccess();
         }
 
-        private void ConnectableBaseReader_OnDisconnect(object? sender, EventArgs e)
+
+        protected override Result DisconnectImpl()
         {
             if (UsePollingReader)
             {
@@ -87,6 +84,7 @@ namespace DSG_Shared.Base
             {
                 oReadThread.TimerStop();
             }
+            return Result.CreateResultSuccess();    
         }
 
         public void EnqueueWriteData(DataBuffer oBuffer)
@@ -94,11 +92,12 @@ namespace DSG_Shared.Base
             if (oBuffer == null)
                 return;
             oQueue.Enqueue(oBuffer);
+            oWriteThread.ThreadSignal();
         }
-        public void EnqueueWriteData(String sMessage)
+        public void EnqueueWriteData(string sMessage)
         {
             oQueue.Enqueue(sMessage);
-            oWriteThread.SignalAction();
+            oWriteThread.ThreadSignal();
         }
 
         private void TaskReadData(object? sender, EventArgs e)

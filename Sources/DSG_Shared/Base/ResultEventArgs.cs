@@ -5,12 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSG_Shared.Base
+namespace DSG.Base
 {
     public class ResultEventArgs : EventArgs
     {
         public Result? Result { get; set; }
 
+        public CancellationTokenSource? CancellationTokenSource { get; set; }
         //-----------------------------------------------
         //public DataBuffer? BufferRead { get; set; }
         //public DataBuffer? BufferWrite { get; set; }

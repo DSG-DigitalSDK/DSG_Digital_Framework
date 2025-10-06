@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSG_Shared.Base
+namespace DSG.Base
 {
     public abstract class DisposableBase : IDisposable
     {

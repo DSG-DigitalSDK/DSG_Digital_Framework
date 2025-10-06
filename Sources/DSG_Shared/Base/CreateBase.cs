@@ -9,7 +9,7 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSG_Shared.Base
+namespace DSG.Base
 {
     public abstract class CreateBase : DisposableBase, ICreatable
     {
@@ -38,9 +38,8 @@ namespace DSG_Shared.Base
         public event EventHandler? OnDestroy;
         public event EventHandler<ResultEventArgs>? OnDestroyError;
 
-        protected abstract Result CreateImpl();
-        protected abstract Result DestroyImpl();
-
+        protected abstract Result CreateImpl(); //=> Result.CreateResultSuccess();
+        protected abstract Result DestroyImpl();// => Result.CreateResultSuccess();
         protected override void Dispose(bool disposing)
         {
             Destroy();

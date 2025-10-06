@@ -1,12 +1,14 @@
 ﻿using DSG.Base;
 using DSG.Log;
+using DSG.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Result = DSG.Base.Result;
 
-namespace DSG_Shared.Base
+namespace DSG.IO
 {
     public abstract class ConnectableBase : CreateBase, IConnectable
     {
@@ -55,6 +57,8 @@ namespace DSG_Shared.Base
             set => SetDictionaryParam(nameof(Params.StreamMode), value);
         }
 
+        public Statistics ReadStatistics { get; private set; } = new Statistics();
+        public Statistics WriteStatistics { get; private set; } = new Statistics(); 
 
         public event EventHandler? OnConnecting;
         public event EventHandler? OnConnect;
@@ -75,6 +79,20 @@ namespace DSG_Shared.Base
         protected abstract Result ReadDataImpl();
         protected abstract Result WriteDataImpl(DataBuffer oBuffer);
         protected abstract Result WriteDataImpl(string sMessage);
+
+
+        protected override Result CreateImpl()
+        {
+            ReadStatistics.Create();
+            WriteStatistics.Create();
+            return Result.CreateResultSuccess();
+        }
+        protected override Result DestroyImpl()
+        {
+            ReadStatistics.Create();
+            WriteStatistics.Create();
+            return Result.CreateResultSuccess();
+        }
 
         public Result Connect()
         {
@@ -189,13 +207,18 @@ namespace DSG_Shared.Base
                 Result oRes;
                 lock (ConnLockerRead)
                 {
+                    TimeElapser oTS = new TimeElapser();
                     oRes = ReadDataImpl();
+                    ReadStatistics.AddValue(oTS.Stop().TotalMilliseconds);
                 }
                 if (oRes.Valid)
                 {
                     LogMan.Trace(sC, sMethod, $"'{Name}/{ConnectionName}' : Read Data Successfull");
                     //                    OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes), oRes.Tag as DataBuffer, null));
-                    OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
+                    if (oRes.Tag != null)
+                    {
+                        OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
+                    }
                 }
                 else
                 {
@@ -245,13 +268,16 @@ namespace DSG_Shared.Base
                 Result oRes;
                 lock (ConnLockerWrite)
                 {
+                    TimeElapser oTS = new TimeElapser();
                     if (oObj is DataBuffer oData)
                     {
-                        oRes = WriteDataImpl(oData);       
+                        oRes = WriteDataImpl(oData);
+                        WriteStatistics.AddValue(oTS.Stop().TotalMilliseconds);
                     }
                     else if (oObj is string sMessage)
                     {
                         oRes = WriteDataImpl(sMessage);
+                        WriteStatistics.AddValue(oTS.Stop().TotalMilliseconds);
                     }
                     else
                     {

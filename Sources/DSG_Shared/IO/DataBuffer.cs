@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Result = DSG.Base.Result;
 
-namespace DSG_Shared.Base
+namespace DSG.IO
 {
     public class DataBuffer
     {

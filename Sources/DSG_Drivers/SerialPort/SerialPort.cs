@@ -9,13 +9,14 @@ using System.Threading.Tasks;
 using System.IO.Ports;
 using DSG.Log;
 using System.ComponentModel.DataAnnotations;
-using DSG_Shared.Base;
+using DSG.IO;
+
 
 namespace DSG.Drivers.SerialPort
 {
     public class SerialPort : ConnectableBasePolling
     {
-        static readonly string sClassName = nameof(SerialPort);
+        static readonly string sClassName = nameof(Drivers.SerialPort);
 
         System.IO.Ports.SerialPort oSerialPort = null;
         public System.IO.Ports.SerialPort SerialPortNative => oSerialPort;
@@ -56,6 +57,8 @@ namespace DSG.Drivers.SerialPort
         protected override Result CreateImpl()
         {
             string sMethod = nameof(CreateImpl);
+
+            base.CreateImpl();
 
             var strArr = ConnectionString.Split("/", StringSplitOptions.TrimEntries).ToList();
             if (strArr.Count != 6)
@@ -143,6 +146,7 @@ namespace DSG.Drivers.SerialPort
 
         protected override Result DestroyImpl()
         {
+            base.DestroyImpl();
             if (oSerialPort != null)
             {
                 oSerialPort.Close();
@@ -154,18 +158,22 @@ namespace DSG.Drivers.SerialPort
 
         protected override Result ConnectImpl()
         {
-            if (!Initialized)
-                return Result.CreateResultError( OperationResult.ErrorFailure, "Not Initialized",0);
-            oSerialPort.Open();
-            return Result.CreateResultSuccess();    
+            var res = base.ConnectImpl();
+            if (res.Valid)
+            {
+                oSerialPort.Open();
+            }
+            return res;
         }
 
         protected override Result DisconnectImpl()
         {
-            if (!Initialized)
-                return Result.CreateResultError(OperationResult.ErrorFailure, "Not Initialized", 0);
-            oSerialPort.Close();
-            return Result.CreateResultSuccess();
+            var res = base.DisconnectImpl();
+            if (res.Valid)
+            {
+                oSerialPort.Close();
+            }
+            return res;
         }
 
         protected override Result ReadDataImpl()
@@ -182,13 +190,21 @@ namespace DSG.Drivers.SerialPort
                     case StreamMode.Binary:
                         {
                             int iBytesToRead = oSerialPort.BytesToRead;
+                            if (iBytesToRead == 0)
+                            {
+                                Thread.Sleep(PollingReadMs);
+                            }
+                            iBytesToRead = oSerialPort.BytesToRead;
                             if (iBytesToRead > 0)
                             {
                                 DataBuffer oBuffer = new DataBuffer(iBytesToRead);
-                                oSerialPort.Read(oBuffer.Data,0, iBytesToRead);
+                                oSerialPort.Read(oBuffer.Data, 0, iBytesToRead);
                                 return Result.CreateResultSuccess(oBuffer);
                             }
-                            return Result.CreateResultSuccess(new DataBuffer());
+                            else
+                            {
+                                return Result.CreateResultError( OperationResult.ErrorTimeout, "Timeout occours",0);
+                            }
                         }
                     default:
                         {
