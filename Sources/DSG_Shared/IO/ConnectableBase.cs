@@ -220,7 +220,7 @@ namespace DSG.IO
             {
                 if (!Connected)
                 {
-                    var oResConn = Connect();
+                    var oResConn = await ConnectAsync();
                     if (oResConn.HasError)
                     {
                         LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
@@ -296,7 +296,7 @@ namespace DSG.IO
                 }
                 if (!Connected)
                 {
-                    var oResConn = Connect();
+                    var oResConn = await ConnectAsync();
                     if (oResConn.HasError)
                     {
                         LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
