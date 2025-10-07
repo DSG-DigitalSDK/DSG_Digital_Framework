@@ -1,7 +1,6 @@
 ﻿using DSG.Base;
 using DSG.Log;
 using DSG.Shared;
-using DSG_Shared.ProducerConsumer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,8 +32,8 @@ namespace DSG.ProducerConsumer
         public abstract Result ProduceDataImpl();
         public abstract Result ConsumeDataImpl();
 
-        ProducerConsumerCounters oProducerCounter = new ProducerConsumerCounters();
-        ProducerConsumerCounters oConsumerCounter = new ProducerConsumerCounters();
+        StatisticCounters oProducerCounter = new StatisticCounters();
+        StatisticCounters oConsumerCounter = new StatisticCounters();
         QueueHandler<T> oProducerQueue = new QueueHandler<T>();  
        
         public int MaxProductionSize
@@ -68,22 +67,24 @@ namespace DSG.ProducerConsumer
         public ProducerConumerBase()
         {
             oConsumerThread.OnSignal += ConsumerTask;
+            OnCreateImplementation  += ProducerConumerBase_OnCreateImplementation;
+            OnDestroyImplementation += ProducerConumerBase_OnDestroyImplementation;
         }
 
-        protected override Result CreateImpl()
+
+        private void ProducerConumerBase_OnCreateImplementation(object? sender, ResultEventArgs e)
         {
-            string sM = nameof(CreateImpl);
+            string sM = nameof(ProducerConumerBase_OnCreateImplementation);
             oConsumerThread.Name = $"{Name}.ConsumerThread";
             oConsumerThread.WakeupTimeMs = 0;
             oConsumerThread.OnSignal += ConsumerTask;
-            var res = oConsumerThread.Create();
-            return res;
+            e.AddResult( oConsumerThread.Create() );
         }
-        protected override Result DestroyImpl()
+        private void ProducerConumerBase_OnDestroyImplementation(object? sender, ResultEventArgs e)
         {
-            string sM = nameof(DestroyImpl);
+            string sM = nameof(ProducerConumerBase_OnDestroyImplementation);
             var res = oConsumerThread?.Destroy() ?? Result.CreateResultSuccess();
-            return res;
+            e.AddResult(res);
         }
 
 
@@ -127,10 +128,8 @@ namespace DSG.ProducerConsumer
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sC, sM, Name, ex);
                 oConsumerCounter.AddErrorEvent();
-                var ret = Result.CreateResultError(ex);
-                OnConsumeError?.Invoke(this, new ResultEventArgs { Result = ret });
+                HandleError( sM,sM, ex,OnConsumeError );
             }
         }
 
@@ -146,28 +145,28 @@ namespace DSG.ProducerConsumer
                     if (ProductionCount > MaxProductionSize)
                     {
                         LogMan.Error(sC, sM, $"{Name} : Production Overflow");
-                        OnProduceError?.Invoke(this, new ResultEventArgs { Result = Result.CreateResultError(OperationResult.ErrorDropData, "Drop data due to Overflow", 0) });
-                        return Result.CreateResultError(OperationResult.ErrorDropData, "Drop data due to Overflow", 0);
+                        var oArgs = ResultEventArgs.CreateEventArgs(Result.CreateResultError(OperationResult.ErrorDropData, "Drop data due to Overflow", 0));
+                        OnProduceError?.Invoke(this, oArgs);
+                        return oArgs.ResultError;
                     }
                 }
-                OnProducing?.Invoke(this, EventArgs.Empty);   
+                OnProducing?.Invoke(this, EventArgs.Empty);
                 var res = ProduceDataImpl();
                 if (res.Valid)
                 {
                     LogMan.Trace(sC, sM, $"{Name} : Data Produced");
-                    OnProduce?.Invoke(this, new ResultEventArgs { Result = res });
+                    OnProduce?.Invoke(this, ResultEventArgs.CreateEventArgs(res));
                 }
                 else
                 {
                     LogMan.Error(sC, sM, $"{Name} : Data Production Error : {res.ErrorMessage}");
-                    OnProduceError?.Invoke(this, new ResultEventArgs {Result = res});
+                    OnProduce?.Invoke(this, ResultEventArgs.CreateEventArgs(res));
                 }
                 return res;
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sC, sM, Name, ex);
-                return Result.CreateResultError(ex);
+                return HandleError(sC, sM, ex, OnProduceError);
             }
         }
     }

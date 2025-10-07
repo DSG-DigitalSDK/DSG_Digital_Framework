@@ -15,7 +15,7 @@ namespace DSG.Log
     /// </summary>
     public static class LogMan
     {
-        static string sClassName = nameof(LogMan);
+        static string sC = nameof(LogMan);
 
         #region Support Classes
         //internal class LogMessage
@@ -44,53 +44,54 @@ namespace DSG.Log
 
         static List<LogEventArgs> lPendingMessages = new List<LogEventArgs>();
         public static bool Initialized { get; private set; } = false;
-        
+        public static object TrackUsew { get; internal set; }
+
         #endregion
 
         public static bool RegisterLogConsumer(ILogConsumer log)
         {
-            string sMethod = nameof(RegisterLogConsumer);
+            string sM = nameof(RegisterLogConsumer);
             if (log == null)
             {
                 return false;
             }
             if (!lLogConsumers.Contains(log))
             {
-                Message(sClassName, sMethod, $"Registering {log.Name}");
+                Message(sC, sM, $"Registering {log.Name}");
                 lLogConsumers.Add(log);
                 return true;
             }
             else
             {
-                Message(sClassName, sMethod, $"{log.Name} already registered");
+                Message(sC, sM, $"{log.Name} already registered");
                 return false;
             }
         }
 
         public static bool UnregisterLogConsumer(ILogConsumer log)
         {
-            string sMethod = nameof(UnregisterLogConsumer);
+            string sM = nameof(UnregisterLogConsumer);
             if (log == null)
             {
                 return false;
             }
             if (lLogConsumers.Contains(log))
             {
-                Message(sClassName, sMethod, $"De-registering {log.Name}");
+                Message(sC, sM, $"De-registering {log.Name}");
                 lLogConsumers.Remove(log);
                 return true;
             }
             else
             {
-                Message(sClassName, sMethod, $"{log.Name} doesn't exists");
+                Message(sC, sM, $"{log.Name} doesn't exists");
                 return false;
             }
         }
 
         public static bool Create()
         {
-            string sMethod = nameof(Create);
-            Message(sClassName, sMethod, "Creating Log Manager");
+            string sM = nameof(Create);
+            Message(sC, sM, "Creating Log Manager");
             foreach (var l in lLogConsumers)
             {
                 try
@@ -100,7 +101,7 @@ namespace DSG.Log
                 }
                 catch (Exception ex)
                 {
-                    Exception(sClassName, sMethod, $"Error creating Logger {l.Name}", ex);
+                    Exception(sC, sM, $"Error creating Logger {l.Name}", ex);
                 }
             }
             Initialized = true;
@@ -113,8 +114,8 @@ namespace DSG.Log
 
         public static bool Destroy()
         {
-            string sMethod =nameof(Destroy);
-            Message(sClassName, sMethod, "Destroying Log Manager");
+            string sM =nameof(Destroy);
+            Message(sC, sM, "Destroying Log Manager");
             foreach (var l in lLogConsumers)
             {
                 try
@@ -177,20 +178,20 @@ namespace DSG.Log
         /// <param name="dtTimeStamp">Timestamp</param>
         /// <param name="eLevel">Log Level</param>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        static void Log(DateTime dtTimeStamp, LogLevel eLevel, string? sClass, string? sMethod, string? sMessage, Exception? ex)
+        internal static void Log(DateTime dtTimeStamp, LogLevel eLevel, string? sClass, string? sM, string? sMessage, Exception? ex)
         {
             var oArgs = new LogEventArgs()
             {
                 TimeStamp = dtTimeStamp,
                 Class = sClass,
                 Level = eLevel,
-                Method = sMethod,
+                Method = sM,
                 Message = sMessage,
                 Exception = ex,
-                FormattedMessage = $"{dtTimeStamp:yyyy-MM-dd HH:mm:ss.fff} | {eLevel} | {sClass}.{sMethod} : {sMessage} {GetExceptionMessage(ex)}"
+                FormattedMessage = $"{dtTimeStamp:yyyy-MM-dd HH:mm:ss.fff} | {eLevel} | {sClass}.{sM} : {sMessage} {GetExceptionMessage(ex)}"
             };
 
             if (!Initialized)
@@ -209,35 +210,35 @@ namespace DSG.Log
         /// Trace a Fatal message (application hangs)
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        public static void Fatal(string sClass, string sMethod, string sMessage, Exception ex)
+        public static void Fatal(string sClass, string sM, string sMessage, Exception ex)
         {
-            Log(DateTime.Now,LogLevel.Fatal, sClass, sMethod, sMessage, ex); 
+            Log(DateTime.Now,LogLevel.Fatal, sClass, sM, sMessage, ex); 
         }
 
         /// <summary>
         /// Trace an Exception message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        public static void Exception(string sClass, string sMethod, string sMessage, Exception ex)
+        public static void Exception(string sClass, string sM, string sMessage, Exception ex)
         {
-            Log(DateTime.Now, LogLevel.Exception, sClass, sMethod, sMessage, ex);
+            Log(DateTime.Now, LogLevel.Exception, sClass, sM, sMessage, ex);
         }
 
         /// <summary>
         /// Trace an Exception message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="ex">Exception info</param>
-        public static void Exception(string sClass, string sMethod, Exception ex)
+        public static void Exception(string sClass, string sM, Exception ex)
         {
-            Log(DateTime.Now, LogLevel.Exception, sClass, sMethod, "Exception raised", ex);
+            Log(DateTime.Now, LogLevel.Exception, sClass, sM, "Exception raised", ex);
         }
 
 
@@ -245,92 +246,103 @@ namespace DSG.Log
         /// Trace an Error message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        public static void Error(string sClass, string sMethod, string sMessage, Exception ex)
+        public static void Error(string sClass, string sM, string sMessage, Exception ex)
         {
             var eLevel = ex == null ? LogLevel.Error : LogLevel.Fatal;
-            Log(DateTime.Now, eLevel, sClass, sMethod, sMessage, ex);
+            Log(DateTime.Now, eLevel, sClass, sM, sMessage, ex);
         }
 
         /// <summary>
         /// Trace an Error message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Error(string sClass, string sMethod, string sMessage)
+        public static void Error(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Error, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Error, sClass, sM, sMessage, null);
         }
 
         /// <summary>
         /// Trace a Warning message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Warning(string sClass, string sMethod, string sMessage)
+        public static void Warning(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Warning, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Warning, sClass, sM, sMessage, null);
         }
 
         /// <summary>
         /// Trace a Pass OK message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Pass(string sClass, string sMethod, string sMessage)
+        public static void Pass(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Pass, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Pass, sClass, sM, sMessage, null);
+        }
+
+        /// <summary>
+        /// Track USer Operation
+        /// </summary>
+        /// <param name="sClass">Source Class</param>
+        /// <param name="sM">Source Method</param>
+        /// <param name="sMessage">Log message</param>
+        public static void TrackUser(string sClass, string sM, string sMessage)
+        {
+            Log(DateTime.Now, LogLevel.TrackUser, sClass, sM, sMessage, null);
         }
 
         /// <summary>
         /// Trace a  message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Message(string sClass, string sMethod, string sMessage)
+        public static void Message(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Message, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Message, sClass, sM, sMessage, null);
         }
 
         /// <summary>
         /// Trace a debug message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Debug(string sClass, string sMethod, string sMessage)
+        public static void Debug(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Debug, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Debug, sClass, sM, sMessage, null);
         }
 
         /// <summary>
         /// Trace lowest level message
         /// </summary>
         /// <param name="sClass">Source Class</param>
-        /// <param name="sMethod">Source Method</param>
+        /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
-        public static void Trace(string sClass, string sMethod, string sMessage)
+        public static void Trace(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Trace, sClass, sMethod, sMessage, null);
+            Log(DateTime.Now, LogLevel.Trace, sClass, sM, sMessage, null);
         }
 
 
         public static void Test()
         {
-            string sMethod = nameof(Test);
-            Exception(sClassName, sMethod, new Exception("Test Exception"));
-            Error(sClassName, sMethod, "Test Error");
-            Warning(sClassName, sMethod, "Test Warning");
-            Pass(sClassName, sMethod, "Test Pass");
-            Message(sClassName, sMethod, "Test Message");
-            Debug(sClassName, sMethod, "Test Debug");
-            Trace(sClassName, sMethod, "Test Trace");
+            string sM = nameof(Test);
+            Exception(sC, sM, new Exception("Test Exception"));
+            Error(sC, sM, "Test Error");
+            Warning(sC, sM, "Test Warning");
+            Pass(sC, sM, "Test Pass");
+            Message(sC, sM, "Test Message");
+            Debug(sC, sM, "Test Debug");
+            Trace(sC, sM, "Test Trace");
         }
 
 

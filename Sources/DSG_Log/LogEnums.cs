@@ -18,6 +18,7 @@ namespace DSG.Log
         Error = 2,
         Warning = 10,
         Pass = 50,
+        TrackUser =75,
         Message = 100,
         Debug = 1000,
         Trace = 2000,

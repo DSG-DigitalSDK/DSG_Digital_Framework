@@ -60,12 +60,7 @@ namespace DSG.Threading
         }
 
         // Microsoft specifications : for Long time running operations is suggested to use Thread instead of Task
-        Thread? oThread;
-
-        /// <summary>
-        /// Thread Identifier
-        /// </summary>
-        public string Name { get; set; } = "*Thread*";
+        Thread? oThread;      
 
         readonly AutoResetEvent oSignalExecute = new AutoResetEvent(false);
         readonly AutoResetEvent oSignalQuit = new AutoResetEvent(false);
@@ -76,7 +71,7 @@ namespace DSG.Threading
         /// </summary>
         CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-        uint iWakeupTime = 1000;
+        int iWakeupTime = 1000;
         private CancellationTokenSource oCancellationTokenSource;
 
         public bool TimerEnabled{get;set;} = true;
@@ -84,7 +79,7 @@ namespace DSG.Threading
         /// <summary>
         /// Setup polling time. Set to Zero to disable (Infinite wait time)
         /// </summary>
-        public uint WakeupTimeMs
+        public int WakeupTimeMs
         {
             get
             {
@@ -122,12 +117,19 @@ namespace DSG.Threading
         public event EventHandler? OnQuit;
 
 
-        public bool TimerStart()=> TimerEnabled = true;
-        public bool TimerStop() => TimerEnabled = true;
-
-        protected override Result CreateImpl()
+        public ThreadBase()
         {
-            string sMethod = nameof(CreateImpl);
+            OnCreateImplementation += ThreadBase_CreateImplementation;
+            OnDestroyImplementation += ThreadBase_DestroyImplementation;
+        }
+
+
+        public bool TimerStart()=> TimerEnabled = true;
+        public bool TimerStop() => TimerEnabled = false;
+
+        private void ThreadBase_CreateImplementation(object? sender, ResultEventArgs e)
+        {
+            string sMethod = nameof(ThreadBase_CreateImplementation);
             cancellationTokenSource = new CancellationTokenSource();
 
             LogMan.Message(sClassName, sMethod, $"{Name} : Creating thread");
@@ -140,12 +142,12 @@ namespace DSG.Threading
             oThread.IsBackground = true;
             oThread.Start();
 
-            return Result.CreateResultSuccess();
+            e.AddResult(Result.CreateResultSuccess());
         }
 
-        protected override Result DestroyImpl()
+        protected void ThreadBase_DestroyImplementation(object? sender, ResultEventArgs e)
         {
-            string sMethod = nameof(Destroy);
+            string sMethod = nameof(ThreadBase_DestroyImplementation);
             LogMan.Message(sClassName, sMethod, $"{Name} : Destroying thread");
             ThreadQuit();
             if (oThread != null && oThread.IsAlive)
@@ -157,8 +159,7 @@ namespace DSG.Threading
             }
             oThread = null;
             Initialized = false;
-
-            return Result.CreateResultSuccess();
+            e.AddResult(Result.CreateResultSuccess());
         }
 
         /// <summary>

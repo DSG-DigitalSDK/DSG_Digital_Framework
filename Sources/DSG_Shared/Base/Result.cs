@@ -24,16 +24,17 @@ namespace DSG.Base
             ErrorMessage = message ?? ex.Message
         };
 
-        public static Result CreateResultError(OperationResult eResult, string sErrorMessage, int iErrorCode) => new Result()
+        public static Result CreateResultError(OperationResult eResult, string? sErrorMessage, int iErrorCode, Exception? ex) => new Result()
         {
             OperationResult = eResult,
             ErrorCode = iErrorCode,
-            ErrorMessage = sErrorMessage
+            ErrorMessage = sErrorMessage,
+            Exception = ex  
         };
-
+        public static Result CreateResultError(OperationResult eResult, string? sErrorMessage, int iErrorCode) => CreateResultError(eResult, sErrorMessage, iErrorCode, null);
         public static Result CreateResultError(Exception ex) => CreateResultError(ex, null);
-
         public static Result CreateResultError() => CreateResultError( OperationResult.Error,null,0);
+        public static Result CreateResultErrorUnknown() => CreateResultError( OperationResult.Error, "Unknown Error", 0, null);
 
         public static Result CreateResultSuccess(object? oTag ) => new Result()
         {

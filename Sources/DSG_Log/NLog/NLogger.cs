@@ -95,6 +95,9 @@ namespace DSG.Log
                 case LogLevel.Pass:
                     NLogInstance?.Info(oArgs.Exception, oArgs.FormattedMessage);
                     break;
+                case LogLevel.TrackUser:
+                    NLogInstance?.Info(oArgs.Exception, oArgs.FormattedMessage);
+                    break;
                 case LogLevel.Message:
                     NLogInstance?.Info(oArgs.Exception, oArgs.FormattedMessage);
                     break;

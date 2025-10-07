@@ -30,7 +30,6 @@ namespace DSG.Base
                     }
                     catch (Exception ex)
                     {
-                        LogMan.Exception(className, method, GetType().Name, ex);
                     }
 
                 }

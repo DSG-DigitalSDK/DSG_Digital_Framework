@@ -9,36 +9,29 @@ namespace DSG.Base
 {
     public class ResultEventArgs : EventArgs
     {
-        public Result? Result { get; set; }
-
+        public List<Result> ResultList { get; private set; } = new List<Result>();
         public CancellationTokenSource? CancellationTokenSource { get; set; }
-        //-----------------------------------------------
-        //public DataBuffer? BufferRead { get; set; }
-        //public DataBuffer? BufferWrite { get; set; }
-        //public String? MessageRead { get; set; }
-        //public String? MessageWrite { get; set; }
+        public bool HasError => ResultList.Any(X => X.HasError);
+        public bool Valid => ResultList.All(X => X.Valid);
+        public Result ResultError => ResultList.FirstOrDefault(X => X.HasError);
 
+        public void AddResult(Result oRes) => ResultList.Add(oRes);
 
-        //public static ResultEventArgs CreateEventArgs(Result? oRes, DataBuffer? oReadBuffer, DataBuffer? oWriteBuffer) 
-        //    => new ResultEventArgs() 
-        //    {
-        //        BufferRead = oReadBuffer,
-        //        BufferWrite = oWriteBuffer,
-        //        Result = oRes 
-        //    };
-        //public static ResultEventArgs CreateEventArgs(Result? oRes, string? sReadBuffer, String? sWriteBuffer)
-        //    => new ResultEventArgs()
-        //    {
-        //        MessageRead = sReadBuffer,
-        //        MessageWrite = sWriteBuffer,
-        //        Result = oRes
-        //    };
-        public static ResultEventArgs CreateEventArgs(Result? oRes) 
-            => new ResultEventArgs()
+        public static ResultEventArgs CreateEventArgs(Result oRes, CancellationTokenSource oTokenSource )
+        {
+            var oResult = new ResultEventArgs()
             {
-                Result = oRes
+                CancellationTokenSource = oTokenSource
             };
+            if (oRes != null)
+            {
+                oResult.ResultList.Add(oRes);
+            }
+            return oResult;
+        }
 
+        public static ResultEventArgs CreateEventArgs(Result oRes) => CreateEventArgs(oRes, null);
+        public static ResultEventArgs CreateEventArgs(CancellationTokenSource oTokenSource) => CreateEventArgs(null, oTokenSource);
 
     }
 }

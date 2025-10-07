@@ -9,14 +9,14 @@ namespace WinFormTesterDemo
 {
     internal static class Program
     {
-        static string className = nameof(Program);
+        static string sC = nameof(Program);
         /// <summary>
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
-            string sMethod = nameof(Program);
+            string sM = nameof(Program);
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
@@ -25,59 +25,80 @@ namespace WinFormTesterDemo
             LogMan.CreateAndRegisterDefaultLoggers(true, true, false);
             LogMan.Create();
 
-            using (SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
+            using ( SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
             {
                 Name = "Serial1",
                 ConnectionName = "SerialTest",
                 ConnectionString = "COM1/57600/ODD/7/1/NONE",
-                StreamMode = DSG.Base.StreamMode.Binary,
-                PollingReadMs =1500,
-                PollingWriteMs= 500,
-                UsePollingReader = true,
-                UsePollingWriter = false,
+                PollingReadMs = 200,
+                PollingWriteMs= 0,
+                ReadTimeoutMs  = 100,
+                WriteTimeoutMs = 100,  
+                EnableReader = true,
+                EnableWriter = true,
+                DataMode = DSG.Base.StreamMode.Text
             })
             using (SerialPort oSer2 = new DSG.Drivers.SerialPort.SerialPort()
             {
                 Name = "Serial2",
                 ConnectionName = "SerialTest",
                 ConnectionString = "COM2/57600/ODD/7/1/NONE",
-                StreamMode = DSG.Base.StreamMode.Binary,
-                PollingReadMs = 1500,
-                PollingWriteMs = 50,
-                UsePollingReader = false,
-                UsePollingWriter = true,
+                PollingReadMs = 200,
+                PollingWriteMs = 0,
+                ReadTimeoutMs = 100,
+                WriteTimeoutMs = 100,
+                EnableReader = true,
+                EnableWriter = true,
+                DataMode = DSG.Base.StreamMode.Text
             })
             {
                 oSer1.OnRead += ((s, e) =>
                     {
-                        string sMsg1 = (e.Result.Tag as DataBuffer)?.ToStringAscii();
-                        string sMsg2 = (e.Result.Tag?.ToString()) ?? "BOH!";
-                        LogMan.Message(className, sMethod, $"Readed : {sMsg1 ?? sMsg2}");
+                        LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
+                        var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
+                        string sMsg = "Boh!";
+                        if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
+                        if (oObj?.Tag is String oS) sMsg = oS;
+                        LogMan.Message(sC,sM, $"{oSer1.Name} : Readed : {sMsg}");
                     });
-                oSer2.OnWrite += ((s, e) => LogMan.Message(className,sMethod, $"Written : { e.Result.Tag?.ToString()}"));
-                for (int i = 0; i < 50; i++)
+                oSer2.OnRead += ((s, e) =>
                 {
-                    oSer2.EnqueueWriteData($"{i:f0} : Ciao!");                  
-                }
-                oSer2.Connect();
-                Thread.Sleep(2500);
-                oSer1.Connect();
+                    LogMan.Message(sC, sM, $"{oSer2.Name} : Data Readed");
+                    var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
+                    string sMsg = "Boh!";
+                    if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
+                    if (oObj?.Tag is String oS) sMsg = oS;
+                    LogMan.Message(sC, sM, $"{oSer2.Name} : Readed : {sMsg}");
+                });
+                oSer1.OnWrite += ((s, e) =>
+                {
+                    LogMan.Message(sC, sM, $"{oSer1.Name} : Data Written");
+                });
+                oSer2.OnWrite += ((s, e) =>
+                {
+                    LogMan.Message(sC, sM, $"{oSer2.Name} : Data Written");
+                });
+
+
+                oSer1.WriteData("S1 Ciao!");
+                oSer2.WriteData("S2 Ciao!");
+
                 Task.Run(() =>
                 {
-                    for (int i = 50; i <= 100; i++)
+                    for (int i = 1; i <= 100; i++)
                     {
-                        oSer2.EnqueueWriteData($"{i:f0} : Ciao!");
-                        Thread.Sleep(200);
-                        //Thread.Sleep(100);
+                        oSer1.EnqueueWriteData($"{oSer1.Name} : {i:f0} : Ciao!");
                     }
                 });
 
-                // var oRead = oPort1.ReadData();
-
-                //            LogMan.Test();
-
-                var oBmp = BitmapUtility.Create(@"C:\Temp\frame_10004_cropped.bmp");
-                BitmapUtility.Save(oBmp, @"C:\Temp\000", ImageSaveFormat.jpg, 50);
+                Task.Run(() =>
+                {
+                    for (int i = 1; i <= 100; i++)
+                    {
+                        oSer2.EnqueueWriteData($"{oSer2.Name} : {i:f0} : Ciao!");
+                        Thread.Sleep(200);
+                    }
+                });
 
                 Application.Run(new Form1());
                 LogMan.Destroy();

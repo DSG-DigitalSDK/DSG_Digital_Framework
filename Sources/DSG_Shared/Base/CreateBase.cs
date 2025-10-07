@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,162 +15,215 @@ namespace DSG.Base
 {
     public abstract class CreateBase : DisposableBase, ICreatable
     {
-        static string className = nameof(CreateBase);
+        static string sC = nameof(CreateBase);
 
-        Dictionary<string, object> oDictParameters = new Dictionary<string, object>();
-        public Dictionary<string, object> ParameterCollection => oDictParameters;
+        public string Name { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
         public bool Initialized { get; protected set; }
+        public bool ThrowExceptions { get; set; }
 
-        public string Name
-        {
-            get => GetDictionaryParam(nameof(Params.Name), "") as string;
-            set => SetDictionaryParam(nameof(Parameter.Name), value );
-        }
-        
-        public bool ThrowExceptions
-        {
-            get => (bool)GetDictionaryParam(nameof(Params.ThrowExceptions), false);
-            set => SetDictionaryParam(nameof(Params.ThrowExceptions), value);
-        }
+        readonly SemaphoreSlim semaphore= new SemaphoreSlim(1,1);   
 
         public event EventHandler? OnCreating;
-        public event EventHandler? OnCreate;
+        public event EventHandler<ResultEventArgs>? OnCreate;
         public event EventHandler<ResultEventArgs>? OnCreateError;
         public event EventHandler? OnDestroying;
-        public event EventHandler? OnDestroy;
+        public event EventHandler<ResultEventArgs>? OnDestroy;
         public event EventHandler<ResultEventArgs>? OnDestroyError;
 
-        protected abstract Result CreateImpl(); //=> Result.CreateResultSuccess();
-        protected abstract Result DestroyImpl();// => Result.CreateResultSuccess();
+        public event EventHandler<ResultEventArgs>? OnCreateImplementation;
+        public event EventHandler<ResultEventArgs>? OnDestroyImplementation;
+        public event Func<object, ResultEventArgs, Task>? OnCreateImplementationAsync;
+        public event Func<object, ResultEventArgs, Task>? OnDestroyImplementationAsync;
+
         protected override void Dispose(bool disposing)
         {
             Destroy();
             base.Dispose(disposing);
         }
 
-        protected Result RaiseEventException(EventHandler<ResultEventArgs> oEvent, Exception ex)
+        protected Result HandleError(string sClass, string sMethod, ResultEventArgs oArgs, EventHandler<ResultEventArgs>? oEvent)
         {
-            string sMethod = nameof(RaiseEventException);
-            var oRes = Result.CreateResultError(ex);
+            string sM = nameof(HandleError);
+            var oRes = oArgs?.ResultError ?? Result.CreateResultErrorUnknown();
+            LogMan.Error(sClass, sMethod, $"{Name} : {oRes.ErrorCode} : {oRes.ErrorMessage} ({oRes.ErrorCode:X8})", oRes.Exception);
             try
             {
-                oEvent?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
+                if (oEvent != null && oArgs != null)
+                {
+                    oEvent?.Invoke(this, oArgs);
+                }
             }
             catch (Exception exx)
-            { 
-                LogMan.Exception(className,sMethod, exx);
+            {
+                LogMan.Exception(sC, sM, exx);
             }
             return oRes;
         }
-        protected object GetDictionaryParam(string sKey, object defaultValue)
-        {
-            if( oDictParameters.TryGetValue(sKey, out var value) )  
-                return value;
-            SetDictionaryParam(sKey, defaultValue);
-            return defaultValue;    
-        }
-        protected object GetDictionaryParam(string sKey)
-        {
-            if (oDictParameters.TryGetValue(sKey, out var value))
-                return value;
-            return null;
-        }
 
-        protected void SetDictionaryParam(string sKey, object oValue)
+        protected Result HandleError(string sClass, string sMethod, OperationResult eResult, string? sErrorMessage, int iErrorCode, Exception? ex, EventHandler<ResultEventArgs>? oEvent)
+            => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError(eResult,sErrorMessage, iErrorCode, ex)), oEvent);  
+        protected Result HandleError(string sClass, string sMethod, Exception ex, EventHandler<ResultEventArgs>? oEvent)
+            => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError( OperationResult.ErrorException, null, 0, ex)), oEvent);
+
+        /// <summary>
+        /// Allocate resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>
+        public async Task<Result> CreateAsync()
         {
-            if (string.IsNullOrWhiteSpace(sKey))
-                return;
-            oDictParameters[sKey] = oValue;
-        }
-        protected void SetDictionaryParam(string sKey)
-        {
-            if (string.IsNullOrWhiteSpace(sKey))
-                return;
-            oDictParameters[sKey] = null;
-        }
-
-
-
-
-        public Result Create()
-        {
-            string sMethod = nameof(Create);
+            string sM = nameof(CreateAsync);
+            await semaphore.WaitAsync();
             try
             {
-                if (Initialized)
+                //Destroy();
+                if (!Enabled)
                 {
-                    LogMan.Trace(className, sMethod, $"'{Name}' already created");
+                    LogMan.Trace(sC, sM, $"'{Name}' DISABLED");
                     return Result.CreateResultSuccess();
                 }
-                LogMan.Trace(className, sMethod, $"Creating '{Name}'");
-                OnCreating?.Invoke( this, EventArgs.Empty );    
-                var oRes = CreateImpl();
-                Initialized = oRes.Valid;
-                if (oRes.Valid)
+                if (Initialized)
                 {
-                    LogMan.Trace(className, sMethod, $"'{Name}' created");
-                    OnCreate?.Invoke( this, EventArgs.Empty );
+                    LogMan.Trace(sC, sM, $"'{Name}' already created");
+                    return Result.CreateResultSuccess();
+                }
+                LogMan.Trace(sC, sM, $"Creating '{Name}'");
+                OnCreating?.Invoke(this, EventArgs.Empty);
+                var oArgs = new ResultEventArgs();
+
+                if (OnCreateImplementationAsync != null)
+                    await OnCreateImplementationAsync(this, oArgs);
+                if (OnCreateImplementation != null)
+                    OnCreateImplementation(this, oArgs);
+                if(OnCreateImplementationAsync == null && OnCreateImplementation == null )
+                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Create implementation registered", 0, null, OnCreateError);
+ 
+                Initialized = oArgs.Valid;
+                if (Initialized)
+                {
+                    LogMan.Trace(sC, sM, $"'{Name}' created");
+                    OnCreate?.Invoke(this, oArgs);
+                    return Result.CreateResultSuccess();
                 }
                 else
                 {
-                    LogMan.Error(className, sMethod, $"Error Creating '{Name}' : {oRes.ErrorMessage} ");
-                    OnCreateError?.Invoke( this, ResultEventArgs.CreateEventArgs(oRes));
-                    Destroy();
+                    return HandleError(sC, sM, oArgs, OnCreateError);
                 }
-                return oRes; 
             }
             catch (Exception ex)
             {
-                LogMan.Exception(className, sMethod, Name, ex);
+                LogMan.Exception(sC, sM, Name, ex);
                 try
                 {
-                    Destroy();
+                    await DestroyAsync();
                 }
                 catch { }
-                return RaiseEventException(OnCreateError, ex);   
+                if (ThrowExceptions)
+                {
+                    throw;
+                }
+                return HandleError(sC, sM, ex, OnCreateError);
+            }
+            finally
+            {
+                semaphore.Release();    
             }
         }
 
+       
 
-        public Result Destroy()
+
+        /// <summary>
+        /// Free resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>
+        public async Task<Result> DestroyAsync()
         {
-            string sMethod = nameof(Destroy);
+            string sM = nameof(DestroyAsync);
+            await semaphore.WaitAsync();
             try
             {
-                LogMan.Trace(className, sMethod, $"Destroying '{Name}'");
+                LogMan.Trace(sC, sM, $"Destroying '{Name}'");
                 if (Initialized)
                 {
                     OnDestroying?.Invoke(this, EventArgs.Empty);
                 }
-                var oRes = DestroyImpl();
-                if (oRes.Valid)
+                var oArgs = new ResultEventArgs();
+                if (OnDestroyImplementationAsync != null)
+                    await OnDestroyImplementationAsync(this, oArgs);
+                if (OnDestroyImplementation != null)
+                    OnDestroyImplementation(this, oArgs);
+                if (OnDestroyImplementationAsync == null && OnDestroyImplementation == null)
+                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Destroy implementation registered", 0, null, OnDestroyError);
+                if (oArgs.Valid)
                 {
-                    LogMan.Trace(className, sMethod, $"'{Name}' destroyed");
+                    LogMan.Trace(sC, sM, $"'{Name}' destroyed");
                     if (Initialized)
                     {
-                        OnDestroy?.Invoke(this, EventArgs.Empty); 
+                        OnDestroy?.Invoke(this, oArgs);
                     }
                     Initialized = false;
+                    return Result.CreateResultSuccess();
                 }
                 else
                 {
                     if (Initialized)
                     {
-                        OnDestroyError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
+                        return HandleError(sC, sM, oArgs, OnDestroyError);
                     }
-                    LogMan.Error(className, sMethod, $"Error Destroyng '{Name}' : {oRes.ErrorMessage} ");
-                    Destroy();
+                    return oArgs.ResultError;
                 }
-                return oRes;
             }
             catch (Exception ex)
             {
-                LogMan.Exception(className, sMethod, Name, ex);
-                return RaiseEventException(OnDestroyError, ex);
+                LogMan.Exception(sC, sM, Name, ex);
+                if (ThrowExceptions)
+                {
+                    throw;
+                }
+                return HandleError(sC, sM, ex, OnDestroyError);
             }
+            finally
+            {
+                semaphore.Release();
+            }
+
         }
 
-        public async Task<Result> CreateAsync() => await Task.Run(() => Create());
-        public async Task<Result> DestroyAsync() => await Task.Run(() => Destroy());
+
+        public Result Create()
+        {
+            string sM = nameof(Create);
+            try
+            {
+                return CreateAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                if (ThrowExceptions)
+                {
+                    throw;
+                }
+                return HandleError(sC, sM, ex, null);
+            }
+        }
+        public Result Destroy()
+        {
+            string sM = nameof(Destroy);
+            try
+            {
+                return DestroyAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                if (ThrowExceptions)
+                {
+                    throw;
+                }
+                return HandleError(sC, sM, ex, null);
+            }
+        }
     }
 }

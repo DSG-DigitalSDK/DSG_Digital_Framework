@@ -6,22 +6,47 @@ using System.Threading.Tasks;
 
 namespace DSG.Base
 {
-    public interface ICreatable
+    public interface ICreatable : IDisposable
     {
-        Dictionary<string, object> ParameterCollection { get; }
+        /// <summary>
+        /// Alloc resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>        
         Task<Result> CreateAsync();
+
+        /// <summary>
+        /// Alloc resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>        
         Result Create();
-        Task<Result> DestroyAsync();
+
+        /// <summary>
+        /// Free resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>        
         Result Destroy();
 
+        /// <summary>
+        /// Free resources <br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>
+        Task<Result> DestroyAsync();
+
+        bool Enabled { get; set; }
         bool Initialized { get; }
+        bool ThrowExceptions { get; set; }
+
         string Name { get; }
 
         event EventHandler? OnCreating;
-        event EventHandler? OnCreate;
+        event EventHandler<ResultEventArgs>? OnCreate;
         event EventHandler<ResultEventArgs>? OnCreateError;
         event EventHandler? OnDestroying;
-        event EventHandler? OnDestroy;
+        event EventHandler<ResultEventArgs>? OnDestroy;
         event EventHandler<ResultEventArgs>? OnDestroyError;
     }
 }

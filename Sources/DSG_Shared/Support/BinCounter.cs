@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DSG.Base
+namespace DSG.Shared
 {
     /// <summary>
     /// Bin counter for hits and total events. Get statistics (hits/total). 

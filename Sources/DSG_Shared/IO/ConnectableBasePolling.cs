@@ -21,82 +21,79 @@ namespace DSG.IO
         ThreadBase oReadThread = new ThreadBase();
         ThreadBase oWriteThread = new ThreadBase();
 
-        public bool UsePollingReader { get; set; } = true;
-        public int PollingReadMs { get; set; } = 1000;
-        public bool UsePollingWriter { get; set; } = true;
-        public int PollingWriteMs { get; set; } = 1000;
+        public bool EnableReader 
+        {
+            get => oReadThread.Enabled;
+            set => oReadThread.Enabled = value;
+        }
+        public int PollingReadMs 
+        {
+            get => oReadThread.WakeupTimeMs;
+            set => oReadThread.WakeupTimeMs = value;
+        }
+        public bool EnableWriter
+        {
+            get => oWriteThread.Enabled;
+            set => oWriteThread.Enabled = value;
+        }
+        public int PollingWriteMs
+        {
+            get => oWriteThread.WakeupTimeMs;
+            set => oWriteThread.WakeupTimeMs = value;
+        }
 
-        QueueHandler<object> oQueue = new  QueueHandler<object>();
-        public int WriteQueueLength => oQueue.Count;
-        
+        QueueHandler<object> oWriteQueue = new  QueueHandler<object>();
+        public int WriteQueueCount => oWriteQueue.Count;
+        public int WriteQueueCapacity
+        {
+            get => oWriteQueue.MaxQueueSize;
+            set => oWriteQueue.MaxQueueSize = value;
+        }
+
         public ConnectableBasePolling()
         {
             oReadThread.OnWakeup += TaskReadData;
             oWriteThread.OnSignal += TaskWriteData;
+            OnCreateImplementation += ConnectableBasePolling_OnCreateImplementation;
+            OnDestroyImplementation += ConnectableBasePolling_OnDestroyImplementation;
+            OnConnectImplementation += ConnectableBasePolling_OnConnectImplementation;
+            OnDisconnectImplementation += ConnectableBasePolling_OnDisconnectImplementation;
         }
 
-        protected override Result CreateImpl()
+
+        private void ConnectableBasePolling_OnCreateImplementation(object sender, ResultEventArgs e)
         {
-            if (UsePollingReader)
-            {
-                oReadThread.Name = $"{Name}.Reader";
-                oReadThread.WakeupTimeMs = (uint)PollingReadMs;
-                oReadThread.Create();
-            }
-            if (UsePollingWriter)
-            {
-                oWriteThread.Name = $"{Name}.Writer";
-                oWriteThread.WakeupTimeMs = (uint)PollingWriteMs;
-                oWriteThread.Create();
-            }
-            return Result.CreateResultSuccess();
+            oReadThread.Name = $"{Name}.Reader";
+            e.AddResult(oReadThread.Create());
+            oWriteThread.Name = $"{Name}.Writer";
+            e.AddResult(oWriteThread.Create());
+            oWriteQueue.CreateQueue();
         }
 
-        protected override Result DestroyImpl()
+        private void ConnectableBasePolling_OnDestroyImplementation(object sender, ResultEventArgs e)
         {
-            oReadThread.Destroy();
-            oWriteThread.Destroy();
-            oQueue.Clear();
-            return Result.CreateResultSuccess();
+            e.AddResult(oReadThread.Destroy());
+            e.AddResult(oWriteThread.Destroy());
+            oWriteQueue.Clear();
         }
 
-        protected override Result ConnectImpl()
+        private void ConnectableBasePolling_OnConnectImplementation(object? sender, ResultEventArgs e)
         {
-            if (UsePollingReader)
-            {
-                oReadThread.TimerStart();
-            }
-            if (UsePollingWriter)
-            {
-                oWriteThread.TimerStart();
-            }
-            return Result.CreateResultSuccess();
+            oReadThread.TimerStart();
+            oWriteThread.TimerStart();
         }
 
-
-        protected override Result DisconnectImpl()
+        private void ConnectableBasePolling_OnDisconnectImplementation(object? sender, ResultEventArgs e)
         {
-            if (UsePollingReader)
-            {
-                oReadThread.TimerStop();
-            }
-            if (UsePollingWriter)
-            {
-                oReadThread.TimerStop();
-            }
-            return Result.CreateResultSuccess();    
+            oReadThread.TimerStop();
+            oReadThread.TimerStop();
         }
 
-        public void EnqueueWriteData(DataBuffer oBuffer)
+        public void EnqueueWriteData( object oBuffer)
         {
             if (oBuffer == null)
                 return;
-            oQueue.Enqueue(oBuffer);
-            oWriteThread.ThreadSignal();
-        }
-        public void EnqueueWriteData(string sMessage)
-        {
-            oQueue.Enqueue(sMessage);
+            oWriteQueue.Enqueue(oBuffer);
             oWriteThread.ThreadSignal();
         }
 
@@ -118,10 +115,10 @@ namespace DSG.IO
         private void TaskWriteData(object? sender, EventArgs e)
         {
             string sM = nameof(TaskWriteData);
-            while (oQueue.Count > 0)
+            while (oWriteQueue.Count > 0)
             {
-                var obj = oQueue.Dequeue();
-                var res = WriteData(obj);                    
+                object oBuffer = oWriteQueue.Dequeue();
+                var res = WriteData(oBuffer);                    
                 if (PollingWriteMs > 0)
                 {
                     Thread.Sleep(PollingWriteMs);  

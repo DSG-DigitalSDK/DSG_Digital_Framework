@@ -10,61 +10,43 @@ using Result = DSG.Base.Result;
 
 namespace DSG.IO
 {
+    /// <summary>
+    /// Abstract class for workflow management<br/>
+    /// Supports:
+    /// <list type="bullet">
+    /// <item>Connection/Disconnectionitem</item>
+    /// <item>Read/Write dataflow</item>
+    /// <item>Event handling</item>
+    /// <item>Error handling</item>
+    /// </list>
+    /// </summary>
     public abstract class ConnectableBase : CreateBase, IConnectable
     {
         static readonly string sC = nameof(ConnectableBase);
 
-        object ConnLocker = new object();
-        object ConnLockerRead = new object();
-        object ConnLockerWrite = new object();
+        SemaphoreSlim oConnSemaphore = new SemaphoreSlim(1, 1);
+        SemaphoreSlim oReadSemaphore = new SemaphoreSlim(1, 1);
+        SemaphoreSlim oWriteSemaphore = new SemaphoreSlim(1, 1);
 
         string sID => $"'{Name}/{ConnectionName}'";
 
         public bool Connected { get; protected set; }
+        public string ConnectionName { get; set; }
+        public string ConnectionString { get; set; }
 
-        public string ConnectionName
-        {
-            get => (string)GetDictionaryParam(nameof(Params.ConnectionName), "");
-             set => SetDictionaryParam(nameof(Params.ConnectionName), value);
-        }
-        public string ConnectionString
-        {
-            get => (string)GetDictionaryParam(nameof(Params.ConnectionString), "");
-            set => SetDictionaryParam(nameof(Params.ConnectionString), value);
-        }
+        public int ConnectionTimeoutMs { get; set; }
+        public int ReadTimeoutMs { get; set; } = 1000;
+        public int WriteTimeoutMs { get; set; } = 1000;
 
-        public int ConnectionTimeoutMs
-        {
-            get => (int)GetDictionaryParam(nameof(Params.ConnectionTimeout), 5000);
-            set => SetDictionaryParam(nameof(Params.ConnectionTimeout), value);
-        }
+        public StatisticCounters ReadCounters { get; private set; } = new  StatisticCounters();
+        public StatisticCounters WriteCounters { get; private set; } = new StatisticCounters();
 
-        public int ReadTimeoutMs
-        {
-            get => (int)GetDictionaryParam(nameof(Params.ConnectionReadTimeout), 1000);
-            set => SetDictionaryParam(nameof(Params.ConnectionReadTimeout), value);
-        }
-
-        public int WriteTimeoutMs
-        {
-            get => (int) GetDictionaryParam(nameof(Params.ConnectionWriteTimeout), 5000);
-            set => SetDictionaryParam(nameof(Params.ConnectionWriteTimeout), value);
-        }
-
-        public StreamMode StreamMode
-        {
-            get => (StreamMode)GetDictionaryParam(nameof(Params.StreamMode), StreamMode.Text);
-            set => SetDictionaryParam(nameof(Params.StreamMode), value);
-        }
-
-        public Statistics ReadStatistics { get; private set; } = new Statistics();
-        public Statistics WriteStatistics { get; private set; } = new Statistics(); 
 
         public event EventHandler? OnConnecting;
-        public event EventHandler? OnConnect;
+        public event EventHandler<ResultEventArgs>? OnConnect;
         public event EventHandler<ResultEventArgs>? OnConnectError;
         public event EventHandler? OnDisconnecting;
-        public event EventHandler? OnDisconnect;
+        public event EventHandler<ResultEventArgs>? OnDisconnect;
         public event EventHandler<ResultEventArgs>? OnDisconnectError;
         //
         public event EventHandler? OnReading;
@@ -73,148 +55,191 @@ namespace DSG.IO
         public event EventHandler? OnWriting;
         public event EventHandler<ResultEventArgs>? OnWrite;
         public event EventHandler<ResultEventArgs>? OnWriteError;
+        //
+        protected event EventHandler<ResultEventArgs>? OnConnectImplementation;
+        protected event EventHandler<ResultEventArgs>? OnDisconnectImplementation;
+        public event Func<object, ResultEventArgs, Task>? OnConnectImplementationAsync;
+        public event Func<object, ResultEventArgs, Task>? OnDisconnectImplementationAsync;
+        //
+        protected abstract Task<Result> ReadImplementationAsync();
+        protected abstract Task<Result> WriteImplementationAsync( object oWriteObj );
+        //
 
-        protected abstract Result ConnectImpl();
-        protected abstract Result DisconnectImpl();
-        protected abstract Result ReadDataImpl();
-        protected abstract Result WriteDataImpl(DataBuffer oBuffer);
-        protected abstract Result WriteDataImpl(string sMessage);
-
-
-        protected override Result CreateImpl()
+        public void ResetReadCounters() => ReadCounters.ResetCounters();
+        public void ResetWriteCounters() => WriteCounters.ResetCounters();
+        public ConnectableBase()
         {
-            ReadStatistics.Create();
-            WriteStatistics.Create();
-            return Result.CreateResultSuccess();
+            ResetReadCounters();
+            ResetWriteCounters();
         }
-        protected override Result DestroyImpl()
+
+        public async Task<Result> ConnectAsync()
         {
-            ReadStatistics.Create();
-            WriteStatistics.Create();
-            return Result.CreateResultSuccess();
+            string sM = nameof(ConnectAsync);
+            await oConnSemaphore.WaitAsync();
+            try
+            {
+                if (!Enabled)
+                {
+                    LogMan.Error(sC, sM, $"'{Name}' : can't connect using a DISABLED instance");
+                    return Result.CreateResultError(OperationResult.Error, $"'{Name}' : can't connect using a DISABLED instance", 0);
+                }
+                if (!Initialized)
+                {
+                    var ResC = Create();
+                    if (!Initialized)
+                    {
+                        LogMan.Error(sC, sM, $"'{Name}' : Creation Error");
+                        return ResC;
+                    }
+                }
+                if (Connected)
+                {
+                    LogMan.Trace(sC, sM, $"{sID} already connected");
+                    return Result.CreateResultSuccess();
+                }
+                OnConnecting?.Invoke(this, EventArgs.Empty);
+                LogMan.Trace(sC, sM, $"Connecting to '{Name}/{ConnectionName}'");
+                var oArgs = new ResultEventArgs();
+                if (OnConnectImplementationAsync != null)
+                    await OnConnectImplementationAsync.Invoke(this, oArgs);
+                if (OnConnectImplementation != null)
+                    OnConnectImplementation.Invoke(this, oArgs);
+                if (OnConnectImplementation == null && OnConnectImplementationAsync == null)
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnConnectImplementation)} not provided", 0, null, OnConnectError);
+
+                if (oArgs.Valid)
+                {
+                    LogMan.Message(sC, sM, $"{sID} Connected ");
+                    Connected = true;
+                    OnConnect?.Invoke(this, oArgs);
+                    return Result.CreateResultSuccess();
+                }
+                else
+                {
+                    LogMan.Error(sC, sM, $"Error Connecting to {sID} : {oArgs.ResultError.ErrorMessage} ");
+                    Connected = false;
+                    OnConnectError?.Invoke(this, oArgs);
+                    return oArgs.ResultError;
+                }
+            }
+            catch (Exception ex)
+            {
+                return HandleError(sC, sM, ex, OnConnectError);
+            }
+            finally
+            {
+                oConnSemaphore.Release();   
+            }
         }
 
         public Result Connect()
         {
             string sM = nameof(Connect);
-            lock (ConnLocker)
+            try
             {
-                try
-                {
-                    if (!Initialized)
-                    {
-                        var ResC = Create();
-                        if (!Initialized)
-                        {
-                            LogMan.Error(sC, sM, $"'{Name}' : Creation Error");
-                            return ResC;
-                        }
-                    }
-                    if (Connected)
-                    {
-                        LogMan.Trace(sC, sM, $"{sID} already connected");
-                        return Result.CreateResultSuccess();
-                    }
-                    LogMan.Trace(sC, sM, $"Connecting to '{Name}/{ConnectionName}'");
-                    OnConnecting?.Invoke(this, EventArgs.Empty);
-                    var oRes = ConnectImpl();
-                    if (oRes.Valid)
-                    {
-                        LogMan.Message(sC, sM, $"{sID} Connected ");
-                        Connected = true;
-                        OnConnect?.Invoke(this, EventArgs.Empty);
-                    }
-                    else
-                    {
-                        LogMan.Error(sC, sM, $"Error Connecting to {sID} : {oRes.ErrorMessage} ");
-                        Connected = false;
-                        OnConnectError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
-                    }
-                    return oRes;
-                }
-                catch (Exception ex)
-                {
-                    LogMan.Exception(sC, sM, Name, ex);
-                    return RaiseEventException(OnConnectError, ex);
-                }
+                return ConnectAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                return Result.CreateResultError(ex);
             }
         }
-        
-        public async Task<Result> ConnectAsync() => await Task.Run(() => Connect());
+
+        public async Task<Result> DisconnectAsync()
+        {
+            string sM = nameof(DisconnectAsync);
+            await oConnSemaphore.WaitAsync();
+            try
+            {
+                var bConn = Connected;
+                if (bConn)
+                {
+                    OnDisconnecting?.Invoke(this, EventArgs.Empty);
+                }
+                if (OnDisconnectImplementation == null)
+                {
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementation)} not provided", 0, null, OnDisconnectError);
+                }
+                LogMan.Trace(sC, sM, $"Disconnecting from {sID}");
+                var oArgs = new ResultEventArgs();
+                if (OnDisconnectImplementationAsync != null)
+                    await OnDisconnectImplementationAsync(this, oArgs);
+                if( OnDisconnectImplementation != null)
+                    OnDisconnectImplementation(this, oArgs);
+                if (OnDisconnectImplementation == null && OnDisconnectImplementationAsync == null)
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementation)} not provided", 0, null, OnDisconnectError);
+
+                if (oArgs.Valid)
+                {
+                    LogMan.Message(sC, sM, $"{sID} Disconnected");
+                    Connected = false;
+                    if (bConn)
+                    {
+                        OnDisconnect?.Invoke(this, oArgs);
+                    }
+                    return Result.CreateResultSuccess();
+                }
+                else
+                {
+                    if (bConn)
+                    {
+                        OnDisconnectError?.Invoke(this, oArgs);
+                    }
+                }
+                return oArgs.ResultError;
+            }
+            catch (Exception ex)
+            {
+                return HandleError(sC, sM, ex, OnDisconnectError);
+            }
+            finally
+            {
+                oConnSemaphore.Release();
+            }
+        }
 
         public Result Disconnect()
         {
-            string sM = nameof(Connect);
-            lock (ConnLocker)
+            string sM = nameof(Disconnect);
+            try
             {
-                try
-                {
-                    var bConn = Connected;
-                    if (bConn)
-                    {
-                        OnDisconnecting?.Invoke(this, EventArgs.Empty);
-                    }
-                    LogMan.Trace(sC, sM, $"Disconnecting from {sID}");
-                    var oRes = DisconnectImpl();
-                    if (oRes.Valid)
-                    {
-                        LogMan.Message(sC, sM, $"{sID} Disconnected");
-                        Connected = false;
-                        if (bConn)
-                        {
-                            OnDisconnect?.Invoke(this, EventArgs.Empty);
-                        }
-                    }
-                    else
-                    {
-                        if (bConn)
-                        {
-                            OnDisconnectError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
-                        }
-                    }
-                    return oRes;
-                }
-                catch (Exception ex)
-                {
-                    LogMan.Exception(sC, sM, Name, ex);
-                    return RaiseEventException(OnDisconnectError, ex);
-                }
+                return DisconnectAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                return Result.CreateResultError(ex);
             }
         }
 
-        public async Task<Result> DisconnectAsync() => await Task.Run(() => Disconnect());
-
-        public Result ReadData()
+        public async Task<Result> ReadDataAsync()
         {
-            string sMethod = nameof (ReadData);
+            string sMethod = nameof (ReadDataAsync);
+            await oReadSemaphore.WaitAsync();
             try
             {
-                lock (ConnLocker)
+                if (!Connected)
                 {
-                    if (!Connected)
+                    var oResConn = Connect();
+                    if (oResConn.HasError)
                     {
-                        var oResConn = Connect();
-                        if (oResConn.HasError)
-                        {
-                            LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Cannot open communication channel");
-                            OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
-                            return oResConn;
-                        }
+                        LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
+                        OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
+                        return oResConn;
                     }
                 }
-                LogMan.Trace(sC, sMethod, $"'{Name}/{ConnectionName}' : Reading Data");
+                LogMan.Trace(sC, sMethod, $"{sID} : Reading Data");
                 OnReading?.Invoke(this, EventArgs.Empty);
                 Result oRes;
-                lock (ConnLockerRead)
-                {
-                    TimeElapser oTS = new TimeElapser();
-                    oRes = ReadDataImpl();
-                    ReadStatistics.AddValue(oTS.Stop().TotalMilliseconds);
-                }
+
+                ReadCounters.TimeStart();
+                oRes = await ReadImplementationAsync();
+
                 if (oRes.Valid)
                 {
-                    LogMan.Trace(sC, sMethod, $"'{Name}/{ConnectionName}' : Read Data Successfull");
-                    //                    OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes), oRes.Tag as DataBuffer, null));
+                    ReadCounters.AddStatisticTime();
+                    ReadCounters.AddValidEvent();
+                    LogMan.Trace(sC, sMethod, $"{sID} : Read Data Successfull");
                     if (oRes.Tag != null)
                     {
                         OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
@@ -222,92 +247,114 @@ namespace DSG.IO
                 }
                 else
                 {
-                    if (oRes.OperationResult != OperationResult.ErrorTimeout)
+                    if (oRes.OperationResult == OperationResult.ErrorTimeout)
                     {
-                        LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Read Error");
-                        OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
-//                        OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes, oRes.Tag as DataBuffer, null));
+                        ReadCounters.AddTimeoutEvent();
                     }
+                    else
+                    {
+                        ReadCounters.AddErrorEvent();
+                        LogMan.Error(sC, sMethod, $"{sID} : Read Error");
+                    }
+                    OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }
                 return oRes;
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sC, sMethod, Name, ex);
-                return RaiseEventException(OnReadError, ex);
+                return HandleError(sC, sMethod, ex, OnReadError);
+            }
+            finally
+            {
+                oReadSemaphore.Release();
             }
         }
 
-        public async Task<Result> ReadDataAsync() => await Task.Run(() => ReadData());
-       
-        protected Result WriteData(object oObj)
+        public Result ReadData()
         {
-            string sMethod = nameof(WriteData);
+            string sM = nameof(ReadData);
+            try
+            {
+                return ReadDataAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                return Result.CreateResultError(ex);    
+            }
+        }
+
+        public async Task<Result> WriteDataAsync(object oObj)
+        {
+            string sMethod = nameof(WriteDataAsync);
+            await oWriteSemaphore.WaitAsync();
             try
             {
                 if (oObj == null)
                 {
                     LogMan.Error(sC, sMethod, $"{sID} : object null");
-                    return Result.CreateResultError(OperationResult.Error, "null object",0);
+                    return Result.CreateResultError(OperationResult.Error, "null object", 0);
                 }
-                lock (ConnLocker)
+                if (!Connected)
                 {
-                    if (!Connected)
+                    var oResConn = Connect();
+                    if (oResConn.HasError)
                     {
-                        var oResConn = Connect();
-                        if (oResConn.HasError)
-                        {
-                            LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Cannot open communication channel");
-                            OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
-                            return oResConn;
-                        }
+                        LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
+                        OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
+                        return oResConn;
                     }
                 }
-                LogMan.Trace(sC, sMethod, $"'{Name}/{ConnectionName}' : Writing Data");
+                LogMan.Trace(sC, sMethod, $"{sID} : Writing Data");
                 OnWriting?.Invoke(this, EventArgs.Empty);
                 Result oRes;
-                lock (ConnLockerWrite)
-                {
-                    TimeElapser oTS = new TimeElapser();
-                    if (oObj is DataBuffer oData)
-                    {
-                        oRes = WriteDataImpl(oData);
-                        WriteStatistics.AddValue(oTS.Stop().TotalMilliseconds);
-                    }
-                    else if (oObj is string sMessage)
-                    {
-                        oRes = WriteDataImpl(sMessage);
-                        WriteStatistics.AddValue(oTS.Stop().TotalMilliseconds);
-                    }
-                    else
-                    {
-                        oRes = Result.CreateResultError(OperationResult.Error, $"Invalid Object Type : {oObj?.GetType().ToString() ?? "null object"}", 0);
-                    }
-                }
+
+                WriteCounters.TimeStart();
+                oRes = await WriteImplementationAsync(oObj);
+
                 if (oRes.Valid)
                 {
-                    LogMan.Trace(sC, sMethod, $"'{Name}/{ConnectionName}' : Write Data Successfull");
-                    // OnWrite?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes, null, oRes.Tag as DataBuffer));
+                    WriteCounters.AddStatisticTime();
+                    WriteCounters.AddValidEvent();
+                    LogMan.Trace(sC, sMethod, $"{sID} : Write Data Successfull");
                     OnWrite?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }
                 else
                 {
-                    LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Write Error");
-                    // OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes, null, oRes.Tag as DataBuffer));
+                    if (oRes.OperationResult == OperationResult.ErrorTimeout)
+                    {
+                        WriteCounters.AddTimeoutEvent();
+                    }
+                    else
+                    {
+                        WriteCounters.AddErrorEvent();
+                        LogMan.Error(sC, sMethod, $"{sID} : Write Error");
+                    }
                     OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }
                 return oRes;
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sC, sMethod, Name, ex);
-                return RaiseEventException(OnWriteError, ex);
+                WriteCounters.AddErrorEvent();
+                return HandleError(sC, sMethod, ex, OnWriteError);
+            }
+            finally
+            {
+                oWriteSemaphore.Release();
             }
         }
 
-        public Result WriteData(DataBuffer oBuffer) => WriteData((object)oBuffer);
-        public Result WriteData(string sMessage) => WriteData((object)sMessage);
-        public async Task<Result> WriteDataAsync(DataBuffer oBuffer) => await Task.Run(() => WriteData(oBuffer));
-        public async Task<Result> WriteDataAsync(string sMessage) => await Task.Run(() => WriteData(sMessage));
+        public Result WriteData(object oObj )
+        {
+            string sM = nameof(WriteData);
+            try
+            {
+                return WriteDataAsync(oObj).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                return Result.CreateResultError(ex);
+            }
+        }
     }
 }

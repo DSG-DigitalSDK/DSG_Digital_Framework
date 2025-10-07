@@ -14,37 +14,22 @@ using DSG.IO;
 
 namespace DSG.Drivers.SerialPort
 {
-    public class SerialPort : ConnectableBasePolling
+    public  class SerialPort : ConnectableBasePolling
     {
-        static readonly string sClassName = nameof(Drivers.SerialPort);
+        static readonly string sClassName = nameof(SerialPort);
 
-        System.IO.Ports.SerialPort oSerialPort = null;
+        protected System.IO.Ports.SerialPort oSerialPort = null;
         public System.IO.Ports.SerialPort SerialPortNative => oSerialPort;
 
         public event EventHandler<SerialDataReceivedEventArgs> OnDataReceived;
 
-        public int ReadBufferSize
-        {
-            get => (int)GetDictionaryParam(nameof(Params.ConnectionReadBufferSize), 0);
-            set => SetDictionaryParam(nameof(Params.ConnectionReadBufferSize), value);
-        }
-        public int WriteBufferSize
-        {
-            get => (int)GetDictionaryParam(nameof(Params.ConnectionWriteBufferSize), 0);
-            set => SetDictionaryParam(nameof(Params.ConnectionWriteBufferSize), value);
-        }
+        public StreamMode DataMode { get; set; } = StreamMode.Text;
 
-        public string TextNewLine
-        {
-            get => (string)GetDictionaryParam(nameof(Params.TextNewLine), "\r\n");
-            set => SetDictionaryParam(nameof(Params.TextNewLine), value);
-        }
+        public int ReadBufferSize { get; set; }
+        public int WriteBufferSize { get; set; }
+        public string TextNewLine { get; set; } = "\r\n";
 
-        public System.Text.Encoding Encoding 
-        {
-            get => (System.Text.Encoding)GetDictionaryParam(nameof(Params.TextEncoding), System.Text.Encoding.ASCII);
-            set => SetDictionaryParam(nameof(Params.TextEncoding), value);
-        }
+        public System.Text.Encoding Encoding { get; set; } = System.Text.Encoding.ASCII;
 
         public new bool Connected => oSerialPort?.IsOpen ?? false;
 
@@ -52,19 +37,25 @@ namespace DSG.Drivers.SerialPort
         public SerialPort()
         {
             ConnectionString = sConnectionInfo;
+            OnCreateImplementation += SerialPort_OnCreateImplementation;
+            OnDestroyImplementation += SerialPort_OnDestroyImplementation;
+            OnConnectImplementation += SerialPort_OnConnectImplementation;
+            OnDisconnectImplementation += SerialPort_OnDisconnectImplementation;
         }
 
-        protected override Result CreateImpl()
-        {
-            string sMethod = nameof(CreateImpl);
+     
 
-            base.CreateImpl();
+        private void SerialPort_OnCreateImplementation(object sender, ResultEventArgs e)
+        {
+
+            string sMethod = nameof(SerialPort_OnCreateImplementation);
 
             var strArr = ConnectionString.Split("/", StringSplitOptions.TrimEntries).ToList();
             if (strArr.Count != 6)
             {
                 LogMan.Error(sClassName, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
-                return Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0);
+                e.AddResult(Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0));
+                return;
             }
             string sParity = strArr[2].ToUpper();
             string sStop = strArr[4].ToUpper();
@@ -94,7 +85,7 @@ namespace DSG.Drivers.SerialPort
             switch (sStop)
             {
                 case "NONE":
-                    eStopBits =  StopBits.None;
+                    eStopBits = StopBits.None;
                     break;
                 case "1":
                     eStopBits = StopBits.One;
@@ -108,11 +99,11 @@ namespace DSG.Drivers.SerialPort
                 default:
                     throw new ArgumentException("Use  '1', '1.5', '2', 'NONE' ", "StopBits");
             }
-            Handshake eHandshake = Handshake.None;  
+            Handshake eHandshake = Handshake.None;
             switch (sHand)
             {
                 case "NONE":
-                    eHandshake =  Handshake.None;
+                    eHandshake = Handshake.None;
                     break;
                 case "RTS":
                     eHandshake = Handshake.RequestToSend;
@@ -129,111 +120,127 @@ namespace DSG.Drivers.SerialPort
                 oSerialPort.ReadTimeout = ReadTimeoutMs;
             if (WriteTimeoutMs > 0)
                 oSerialPort.WriteTimeout = WriteTimeoutMs;
-            if (ReadBufferSize > 0 )
+            if (ReadBufferSize > 0)
                 oSerialPort.ReadBufferSize = ReadBufferSize;
             if (WriteBufferSize > 0)
                 oSerialPort.WriteBufferSize = WriteBufferSize;
             oSerialPort.NewLine = TextNewLine;
             oSerialPort.Encoding = Encoding;
             oSerialPort.DataReceived += OSerialPort_DataReceived;
-            return Result.CreateResultSuccess();
+            e.AddResult(Result.CreateResultSuccess());
+
         }
 
         private void OSerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            OnDataReceived?.Invoke(this, e);    
+            OnDataReceived?.Invoke(this, e);
         }
 
-        protected override Result DestroyImpl()
-        {
-            base.DestroyImpl();
+
+        private void SerialPort_OnDestroyImplementation(object sender, ResultEventArgs e)
+        {          
             if (oSerialPort != null)
             {
                 oSerialPort.Close();
                 oSerialPort.Dispose();
             }
             oSerialPort = null;
-            return Result.CreateResultSuccess();
+            e.AddResult(Result.CreateResultSuccess());
         }
 
-        protected override Result ConnectImpl()
+        private void SerialPort_OnConnectImplementation(object? sender, ResultEventArgs e)
         {
-            var res = base.ConnectImpl();
-            if (res.Valid)
-            {
-                oSerialPort.Open();
-            }
-            return res;
+            oSerialPort.Open();
+            e.AddResult(Result.CreateResultSuccess());
         }
 
-        protected override Result DisconnectImpl()
+        private void SerialPort_OnDisconnectImplementation(object? sender, ResultEventArgs e)
         {
-            var res = base.DisconnectImpl();
-            if (res.Valid)
-            {
-                oSerialPort.Close();
-            }
-            return res;
+            oSerialPort.Close();
+            e.AddResult(Result.CreateResultSuccess());
         }
 
-        protected override Result ReadDataImpl()
+        protected override async Task<Result> ReadImplementationAsync()
         {
-            try
+            return await Task<Result>.Run(() =>
             {
-                switch (StreamMode)
+                try
                 {
-                    case StreamMode.Text:
-                        {
-                            var sMessage = oSerialPort.ReadLine();
-                            return Result.CreateResultSuccess(sMessage);
-                        }
-                    case StreamMode.Binary:
-                        {
-                            int iBytesToRead = oSerialPort.BytesToRead;
-                            if (iBytesToRead == 0)
+                    switch (DataMode)
+                    {
+                        case StreamMode.Text:
                             {
-                                Thread.Sleep(PollingReadMs);
+                                var sMessage = oSerialPort.ReadLine();
+                                return Result.CreateResultSuccess(sMessage);
                             }
-                            iBytesToRead = oSerialPort.BytesToRead;
-                            if (iBytesToRead > 0)
+                        case StreamMode.Binary:
                             {
-                                DataBuffer oBuffer = new DataBuffer(iBytesToRead);
-                                oSerialPort.Read(oBuffer.Data, 0, iBytesToRead);
-                                return Result.CreateResultSuccess(oBuffer);
+                                int iBytesToRead = oSerialPort.BytesToRead;
+                                if (iBytesToRead == 0)
+                                {
+                                    Thread.Sleep(PollingReadMs);
+                                }
+                                iBytesToRead = oSerialPort.BytesToRead;
+                                if (iBytesToRead > 0)
+                                {
+                                    DataBuffer oBuffer = new DataBuffer(iBytesToRead);
+                                    oSerialPort.Read(oBuffer.Data, 0, iBytesToRead);
+                                    return Result.CreateResultSuccess(oBuffer);
+                                }
+                                else
+                                {
+                                    return Result.CreateResultError(OperationResult.ErrorTimeout, "Timeout occours", 0);
+                                }
                             }
-                            else
+                        default:
                             {
-                                return Result.CreateResultError( OperationResult.ErrorTimeout, "Timeout occours",0);
+                                return Result.CreateResultError(OperationResult.Error, $"{nameof(DataMode)} not supported : {DataMode}", 0);
                             }
-                        }
-                    default:
-                        {
-                            return Result.CreateResultError( OperationResult.Error, $"{nameof(StreamMode)} not supported : {StreamMode}",0);
-                        }
+                    }
                 }
-            }
-            catch( TimeoutException exT) 
-            { 
-                return Result.CreateResultError(OperationResult.ErrorTimeout,exT.Message,0); 
-            }
+                catch (TimeoutException exT)
+                {
+                    return Result.CreateResultError(OperationResult.ErrorTimeout, exT.Message, 0);
+                }
+            });
         }
 
-        protected override Result WriteDataImpl(DataBuffer oBuffer)
+
+        protected override async Task<Result> WriteImplementationAsync(object oObj)
         {
-            oSerialPort.Write(oBuffer.Data, oBuffer.DataStartOffset, oBuffer.DataLenght);
-            return Result.CreateResultSuccess(oBuffer);
-        }
-        protected override Result WriteDataImpl(string sMessage)
-        {
-            if (!sMessage.EndsWith(TextNewLine))
+            return await Task<Result>.Run(() =>
             {
-                oSerialPort.Write(sMessage + TextNewLine);
-            }
-            else
-            {
-                oSerialPort.Write(sMessage);
-            }
-            return Result.CreateResultSuccess(sMessage);  
+                if (oObj == null)
+                {
+                    return Result.CreateResultError(OperationResult.Error, "Object null", 0);
+                }
+                if (oObj is string sMessage)
+                {
+                    if (!sMessage.EndsWith(TextNewLine))
+                    {
+                        oSerialPort.Write(sMessage + TextNewLine);
+                    }
+                    else
+                    {
+                        oSerialPort.Write(sMessage);
+                    }
+                    return Result.CreateResultSuccess(oObj);
+                }
+                if (oObj is DataBuffer oBuffer)
+                {
+                    oSerialPort.Write(oBuffer.Data, oBuffer.DataStartOffset, oBuffer.DataLenght);
+                    return Result.CreateResultSuccess(oObj);
+                }
+                if (oObj is byte[] oByteArray)
+                {
+                    oSerialPort.Write(oByteArray, 0, oByteArray.Length);
+                    return Result.CreateResultSuccess(oObj);
+                }
+                else
+                {
+                    return Result.CreateResultError(OperationResult.Error, "Invalid Object Type", 0);
+                }
+            });
         }
     }
 }
