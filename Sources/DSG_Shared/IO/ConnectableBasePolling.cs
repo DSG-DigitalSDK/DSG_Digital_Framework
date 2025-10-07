@@ -54,39 +54,51 @@ namespace DSG.IO
         {
             oReadThread.OnWakeup += TaskReadData;
             oWriteThread.OnSignal += TaskWriteData;
-            OnCreateImplementation += ConnectableBasePolling_OnCreateImplementation;
-            OnDestroyImplementation += ConnectableBasePolling_OnDestroyImplementation;
-            OnConnectImplementation += ConnectableBasePolling_OnConnectImplementation;
-            OnDisconnectImplementation += ConnectableBasePolling_OnDisconnectImplementation;
+            OnCreateImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
+            OnDestroyImplementationAsync += ConnectableBasePolling_OnDestroyImplementationAsync;
+            OnConnectImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
+            OnDisconnectImplementationAsync += ConnectableBasePolling_OnDisconnectImplementationAsync;
         }
 
 
-        private void ConnectableBasePolling_OnCreateImplementation(object sender, ResultEventArgs e)
+        private async Task ConnectableBasePolling_OnCreateImplementationAsync(object sender, ResultEventArgs e)
         {
-            oReadThread.Name = $"{Name}.Reader";
-            e.AddResult(oReadThread.Create());
-            oWriteThread.Name = $"{Name}.Writer";
-            e.AddResult(oWriteThread.Create());
-            oWriteQueue.CreateQueue();
+            await Task.Run(() =>
+            {
+                oReadThread.Name = $"{Name}.Reader";
+                e.AddResult(oReadThread.Create());
+                oWriteThread.Name = $"{Name}.Writer";
+                e.AddResult(oWriteThread.Create());
+                oWriteQueue.CreateQueue();
+            });
         }
 
-        private void ConnectableBasePolling_OnDestroyImplementation(object sender, ResultEventArgs e)
+        private async Task ConnectableBasePolling_OnDestroyImplementationAsync(object sender, ResultEventArgs e)
         {
-            e.AddResult(oReadThread.Destroy());
-            e.AddResult(oWriteThread.Destroy());
-            oWriteQueue.Clear();
+            await Task.Run(() =>
+            {
+                e.AddResult(oReadThread.Destroy());
+                e.AddResult(oWriteThread.Destroy());
+                oWriteQueue.Clear();
+            });
         }
 
-        private void ConnectableBasePolling_OnConnectImplementation(object? sender, ResultEventArgs e)
+        private async Task ConnectableBasePolling_OnConnectImplementationAsync(object? sender, ResultEventArgs e)
         {
-            oReadThread.TimerStart();
-            oWriteThread.TimerStart();
+            await Task.Run(() =>
+            {
+                oReadThread.TimerStart();
+                oWriteThread.TimerStart();
+            });
         }
 
-        private void ConnectableBasePolling_OnDisconnectImplementation(object? sender, ResultEventArgs e)
+        private async Task ConnectableBasePolling_OnDisconnectImplementationAsync(object? sender, ResultEventArgs e)
         {
-            oReadThread.TimerStop();
-            oReadThread.TimerStop();
+            await Task.Run(() =>
+            {
+                oReadThread.TimerStop();
+                oReadThread.TimerStop();
+            });
         }
 
         public void EnqueueWriteData( object oBuffer)

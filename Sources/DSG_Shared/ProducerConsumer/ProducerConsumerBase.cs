@@ -67,24 +67,30 @@ namespace DSG.ProducerConsumer
         public ProducerConumerBase()
         {
             oConsumerThread.OnSignal += ConsumerTask;
-            OnCreateImplementation  += ProducerConumerBase_OnCreateImplementation;
-            OnDestroyImplementation += ProducerConumerBase_OnDestroyImplementation;
+            OnCreateImplementationAsync  += ProducerConumerBase_OnCreateImplementationAsync;
+            OnDestroyImplementationAsync += ProducerConumerBase_OnDestroyImplementationAsync;
         }
 
 
-        private void ProducerConumerBase_OnCreateImplementation(object? sender, ResultEventArgs e)
+        private async Task ProducerConumerBase_OnCreateImplementationAsync(object? sender, ResultEventArgs e)
         {
-            string sM = nameof(ProducerConumerBase_OnCreateImplementation);
-            oConsumerThread.Name = $"{Name}.ConsumerThread";
-            oConsumerThread.WakeupTimeMs = 0;
-            oConsumerThread.OnSignal += ConsumerTask;
-            e.AddResult( oConsumerThread.Create() );
+            await Task.Run(() =>
+            {
+                string sM = nameof(ProducerConumerBase_OnCreateImplementationAsync);
+                oConsumerThread.Name = $"{Name}.ConsumerThread";
+                oConsumerThread.WakeupTimeMs = 0;
+                oConsumerThread.OnSignal += ConsumerTask;
+                e.AddResult(oConsumerThread.Create());
+            });
         }
-        private void ProducerConumerBase_OnDestroyImplementation(object? sender, ResultEventArgs e)
+        private async Task ProducerConumerBase_OnDestroyImplementationAsync(object? sender, ResultEventArgs e)
         {
-            string sM = nameof(ProducerConumerBase_OnDestroyImplementation);
-            var res = oConsumerThread?.Destroy() ?? Result.CreateResultSuccess();
-            e.AddResult(res);
+            await Task.Run(() =>
+            {
+                string sM = nameof(ProducerConumerBase_OnDestroyImplementationAsync);
+                var res = oConsumerThread?.Destroy() ?? Result.CreateResultSuccess();
+                e.AddResult(res);
+            });
         }
 
 

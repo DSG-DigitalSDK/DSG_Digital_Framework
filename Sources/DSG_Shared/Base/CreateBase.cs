@@ -31,8 +31,9 @@ namespace DSG.Base
         public event EventHandler<ResultEventArgs>? OnDestroy;
         public event EventHandler<ResultEventArgs>? OnDestroyError;
 
-        public event EventHandler<ResultEventArgs>? OnCreateImplementation;
-        public event EventHandler<ResultEventArgs>? OnDestroyImplementation;
+        //- DEPRECATED -
+        //public event EventHandler<ResultEventArgs>? OnCreateImplementation;
+        //public event EventHandler<ResultEventArgs>? OnDestroyImplementation;
         public event Func<object, ResultEventArgs, Task>? OnCreateImplementationAsync;
         public event Func<object, ResultEventArgs, Task>? OnDestroyImplementationAsync;
 
@@ -94,9 +95,10 @@ namespace DSG.Base
 
                 if (OnCreateImplementationAsync != null)
                     await OnCreateImplementationAsync(this, oArgs);
-                if (OnCreateImplementation != null)
-                    OnCreateImplementation(this, oArgs);
-                if(OnCreateImplementationAsync == null && OnCreateImplementation == null )
+                //if (OnCreateImplementation != null)
+                //    OnCreateImplementation(this, oArgs);
+                //if(OnCreateImplementationAsync == null && OnCreateImplementation == null )
+                else
                     return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Create implementation registered", 0, null, OnCreateError);
  
                 Initialized = oArgs.Valid;
@@ -156,9 +158,10 @@ namespace DSG.Base
                 var oArgs = new ResultEventArgs();
                 if (OnDestroyImplementationAsync != null)
                     await OnDestroyImplementationAsync(this, oArgs);
-                if (OnDestroyImplementation != null)
-                    OnDestroyImplementation(this, oArgs);
-                if (OnDestroyImplementationAsync == null && OnDestroyImplementation == null)
+                //if (OnDestroyImplementation != null)
+                //    OnDestroyImplementation(this, oArgs);
+                //if (OnDestroyImplementationAsync == null && OnDestroyImplementation == null)
+                else
                     return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Destroy implementation registered", 0, null, OnDestroyError);
                 if (oArgs.Valid)
                 {

@@ -1,6 +1,7 @@
 ﻿using DSG.Base;
 using DSG.Log;
 using DSG.Shared;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -56,8 +57,8 @@ namespace DSG.IO
         public event EventHandler<ResultEventArgs>? OnWrite;
         public event EventHandler<ResultEventArgs>? OnWriteError;
         //
-        protected event EventHandler<ResultEventArgs>? OnConnectImplementation;
-        protected event EventHandler<ResultEventArgs>? OnDisconnectImplementation;
+        //protected event EventHandler<ResultEventArgs>? OnConnectImplementation;
+        //protected event EventHandler<ResultEventArgs>? OnDisconnectImplementation;
         public event Func<object, ResultEventArgs, Task>? OnConnectImplementationAsync;
         public event Func<object, ResultEventArgs, Task>? OnDisconnectImplementationAsync;
         //
@@ -81,15 +82,15 @@ namespace DSG.IO
             {
                 if (!Enabled)
                 {
-                    LogMan.Error(sC, sM, $"'{Name}' : can't connect using a DISABLED instance");
-                    return Result.CreateResultError(OperationResult.Error, $"'{Name}' : can't connect using a DISABLED instance", 0);
+                    LogMan.Error(sC, sM, $"'{sID}' : can't connect using a DISABLED instance");
+                    return Result.CreateResultError(OperationResult.Error, $"'{sID}' : can't connect using a DISABLED instance", 0);
                 }
                 if (!Initialized)
                 {
-                    var ResC = Create();
+                    var ResC = await CreateAsync();
                     if (!Initialized)
                     {
-                        LogMan.Error(sC, sM, $"'{Name}' : Creation Error");
+                        LogMan.Error(sC, sM, $"'{sID}' : Creation Error");
                         return ResC;
                     }
                 }
@@ -99,14 +100,15 @@ namespace DSG.IO
                     return Result.CreateResultSuccess();
                 }
                 OnConnecting?.Invoke(this, EventArgs.Empty);
-                LogMan.Trace(sC, sM, $"Connecting to '{Name}/{ConnectionName}'");
+                LogMan.Trace(sC, sM, $"Connecting to '{sID}'");
                 var oArgs = new ResultEventArgs();
                 if (OnConnectImplementationAsync != null)
                     await OnConnectImplementationAsync.Invoke(this, oArgs);
-                if (OnConnectImplementation != null)
-                    OnConnectImplementation.Invoke(this, oArgs);
-                if (OnConnectImplementation == null && OnConnectImplementationAsync == null)
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnConnectImplementation)} not provided", 0, null, OnConnectError);
+                //if (OnConnectImplementation != null)
+                //    OnConnectImplementation.Invoke(this, oArgs);
+                //if (OnConnectImplementation == null && OnConnectImplementationAsync == null)
+                else
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, OnConnectError);
 
                 if (oArgs.Valid)
                 {
@@ -157,18 +159,19 @@ namespace DSG.IO
                 {
                     OnDisconnecting?.Invoke(this, EventArgs.Empty);
                 }
-                if (OnDisconnectImplementation == null)
+                if (OnDisconnectImplementationAsync == null)
                 {
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementation)} not provided", 0, null, OnDisconnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
                 }
                 LogMan.Trace(sC, sM, $"Disconnecting from {sID}");
                 var oArgs = new ResultEventArgs();
                 if (OnDisconnectImplementationAsync != null)
                     await OnDisconnectImplementationAsync(this, oArgs);
-                if( OnDisconnectImplementation != null)
-                    OnDisconnectImplementation(this, oArgs);
-                if (OnDisconnectImplementation == null && OnDisconnectImplementationAsync == null)
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementation)} not provided", 0, null, OnDisconnectError);
+                //if( OnDisconnectImplementation != null)
+                //    OnDisconnectImplementation(this, oArgs);
+                //if (OnDisconnectImplementation == null && OnDisconnectImplementationAsync == null)
+                else
+                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
 
                 if (oArgs.Valid)
                 {

@@ -119,47 +119,53 @@ namespace DSG.Threading
 
         public ThreadBase()
         {
-            OnCreateImplementation += ThreadBase_CreateImplementation;
-            OnDestroyImplementation += ThreadBase_DestroyImplementation;
+            OnCreateImplementationAsync += ThreadBase_CreateImplementationAsync;
+            OnDestroyImplementationAsync += ThreadBase_DestroyImplementationAsync;
         }
 
 
         public bool TimerStart()=> TimerEnabled = true;
         public bool TimerStop() => TimerEnabled = false;
 
-        private void ThreadBase_CreateImplementation(object? sender, ResultEventArgs e)
+        private async Task ThreadBase_CreateImplementationAsync(object? sender, ResultEventArgs e)
         {
-            string sMethod = nameof(ThreadBase_CreateImplementation);
-            cancellationTokenSource = new CancellationTokenSource();
+            await Task.Run(() =>
+            {
+                string sMethod = nameof(ThreadBase_CreateImplementationAsync);
+                cancellationTokenSource = new CancellationTokenSource();
 
-            LogMan.Message(sClassName, sMethod, $"{Name} : Creating thread");
+                LogMan.Message(sClassName, sMethod, $"{Name} : Creating thread");
 
-            oSignalExecute.Reset();
-            oSignalQuit.Reset();
-            oSignalWakeupRestart.Reset();
+                oSignalExecute.Reset();
+                oSignalQuit.Reset();
+                oSignalWakeupRestart.Reset();
 
-            oThread = new Thread(ThreadJob);
-            oThread.IsBackground = true;
-            oThread.Start();
+                oThread = new Thread(ThreadJob);
+                oThread.IsBackground = true;
+                oThread.Start();
 
-            e.AddResult(Result.CreateResultSuccess());
+                e.AddResult(Result.CreateResultSuccess());
+            });
         }
 
-        protected void ThreadBase_DestroyImplementation(object? sender, ResultEventArgs e)
+        protected async Task ThreadBase_DestroyImplementationAsync(object? sender, ResultEventArgs e)
         {
-            string sMethod = nameof(ThreadBase_DestroyImplementation);
-            LogMan.Message(sClassName, sMethod, $"{Name} : Destroying thread");
-            ThreadQuit();
-            if (oThread != null && oThread.IsAlive)
+            await Task.Run(() =>
             {
-                if (!oThread.Join(5000))
+                string sMethod = nameof(ThreadBase_DestroyImplementationAsync);
+                LogMan.Message(sClassName, sMethod, $"{Name} : Destroying thread");
+                ThreadQuit();
+                if (oThread != null && oThread.IsAlive)
                 {
-                    LogMan.Warning(sClassName, sMethod, $"Task {Name} Doesn't stop");
+                    if (!oThread.Join(5000))
+                    {
+                        LogMan.Warning(sClassName, sMethod, $"Task {Name} Doesn't stop");
+                    }
                 }
-            }
-            oThread = null;
-            Initialized = false;
-            e.AddResult(Result.CreateResultSuccess());
+                oThread = null;
+                Initialized = false;
+                e.AddResult(Result.CreateResultSuccess());
+            });
         }
 
         /// <summary>

@@ -37,98 +37,99 @@ namespace DSG.Drivers.SerialPort
         public SerialPort()
         {
             ConnectionString = sConnectionInfo;
-            OnCreateImplementation += SerialPort_OnCreateImplementation;
-            OnDestroyImplementation += SerialPort_OnDestroyImplementation;
-            OnConnectImplementation += SerialPort_OnConnectImplementation;
-            OnDisconnectImplementation += SerialPort_OnDisconnectImplementation;
+            OnCreateImplementationAsync += SerialPort_OnCreateImplementationAsync;
+            OnDestroyImplementationAsync += SerialPort_OnDestroyImplementationAsync;
+            OnConnectImplementationAsync += SerialPort_OnConnectImplementationAsync;
+            OnDisconnectImplementationAsync += SerialPort_OnDisconnectImplementationAsync;
         }
 
      
 
-        private void SerialPort_OnCreateImplementation(object sender, ResultEventArgs e)
+        private async Task SerialPort_OnCreateImplementationAsync(object sender, ResultEventArgs e)
         {
+            await Task.Run(() =>
+            {
+                string sMethod = nameof(SerialPort_OnCreateImplementationAsync);
 
-            string sMethod = nameof(SerialPort_OnCreateImplementation);
-
-            var strArr = ConnectionString.Split("/", StringSplitOptions.TrimEntries).ToList();
-            if (strArr.Count != 6)
-            {
-                LogMan.Error(sClassName, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
-                e.AddResult(Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0));
-                return;
-            }
-            string sParity = strArr[2].ToUpper();
-            string sStop = strArr[4].ToUpper();
-            string sHand = strArr[5].ToUpper();
-            var sPortName = strArr[0];
-            int iBaudRate = Convert.ToInt32(strArr[1]);
-            Parity eParity = Parity.None;
-            switch (sParity)
-            {
-                case "ODD":
-                    eParity = Parity.Odd;
-                    break;
-                case "EVEN":
-                    eParity = Parity.Even;
-                    break;
-                case "NONE":
-                    eParity = Parity.None;
-                    break;
-                case "MARK":
-                    eParity = Parity.Mark;
-                    break;
-                default:
-                    throw new ArgumentException("Use  'ODD', 'EVEN', 'NONE', 'MARK' ", "Parity");
-            }
-            int iDataBits = Convert.ToInt32(strArr[3]);
-            StopBits eStopBits = StopBits.None;
-            switch (sStop)
-            {
-                case "NONE":
-                    eStopBits = StopBits.None;
-                    break;
-                case "1":
-                    eStopBits = StopBits.One;
-                    break;
-                case "1.5":
-                    eStopBits = StopBits.OnePointFive;
-                    break;
-                case "2":
-                    eStopBits = StopBits.OnePointFive;
-                    break;
-                default:
-                    throw new ArgumentException("Use  '1', '1.5', '2', 'NONE' ", "StopBits");
-            }
-            Handshake eHandshake = Handshake.None;
-            switch (sHand)
-            {
-                case "NONE":
-                    eHandshake = Handshake.None;
-                    break;
-                case "RTS":
-                    eHandshake = Handshake.RequestToSend;
-                    break;
-                case "XON":
-                    eHandshake = Handshake.XOnXOff;
-                    break;
-                default:
-                    throw new ArgumentException("Use  'NONE', 'RTS', 'XON'", "HandShake");
-            }
-            oSerialPort = new System.IO.Ports.SerialPort(sPortName, iBaudRate, eParity, iDataBits, eStopBits);
-            oSerialPort.Handshake = eHandshake;
-            if (ReadTimeoutMs > 0)
-                oSerialPort.ReadTimeout = ReadTimeoutMs;
-            if (WriteTimeoutMs > 0)
-                oSerialPort.WriteTimeout = WriteTimeoutMs;
-            if (ReadBufferSize > 0)
-                oSerialPort.ReadBufferSize = ReadBufferSize;
-            if (WriteBufferSize > 0)
-                oSerialPort.WriteBufferSize = WriteBufferSize;
-            oSerialPort.NewLine = TextNewLine;
-            oSerialPort.Encoding = Encoding;
-            oSerialPort.DataReceived += OSerialPort_DataReceived;
-            e.AddResult(Result.CreateResultSuccess());
-
+                var strArr = ConnectionString.Split("/", StringSplitOptions.TrimEntries).ToList();
+                if (strArr.Count != 6)
+                {
+                    LogMan.Error(sClassName, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
+                    e.AddResult(Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0));
+                    return;
+                }
+                string sParity = strArr[2].ToUpper();
+                string sStop = strArr[4].ToUpper();
+                string sHand = strArr[5].ToUpper();
+                var sPortName = strArr[0];
+                int iBaudRate = Convert.ToInt32(strArr[1]);
+                Parity eParity = Parity.None;
+                switch (sParity)
+                {
+                    case "ODD":
+                        eParity = Parity.Odd;
+                        break;
+                    case "EVEN":
+                        eParity = Parity.Even;
+                        break;
+                    case "NONE":
+                        eParity = Parity.None;
+                        break;
+                    case "MARK":
+                        eParity = Parity.Mark;
+                        break;
+                    default:
+                        throw new ArgumentException("Use  'ODD', 'EVEN', 'NONE', 'MARK' ", "Parity");
+                }
+                int iDataBits = Convert.ToInt32(strArr[3]);
+                StopBits eStopBits = StopBits.None;
+                switch (sStop)
+                {
+                    case "NONE":
+                        eStopBits = StopBits.None;
+                        break;
+                    case "1":
+                        eStopBits = StopBits.One;
+                        break;
+                    case "1.5":
+                        eStopBits = StopBits.OnePointFive;
+                        break;
+                    case "2":
+                        eStopBits = StopBits.OnePointFive;
+                        break;
+                    default:
+                        throw new ArgumentException("Use  '1', '1.5', '2', 'NONE' ", "StopBits");
+                }
+                Handshake eHandshake = Handshake.None;
+                switch (sHand)
+                {
+                    case "NONE":
+                        eHandshake = Handshake.None;
+                        break;
+                    case "RTS":
+                        eHandshake = Handshake.RequestToSend;
+                        break;
+                    case "XON":
+                        eHandshake = Handshake.XOnXOff;
+                        break;
+                    default:
+                        throw new ArgumentException("Use  'NONE', 'RTS', 'XON'", "HandShake");
+                }
+                oSerialPort = new System.IO.Ports.SerialPort(sPortName, iBaudRate, eParity, iDataBits, eStopBits);
+                oSerialPort.Handshake = eHandshake;
+                if (ReadTimeoutMs > 0)
+                    oSerialPort.ReadTimeout = ReadTimeoutMs;
+                if (WriteTimeoutMs > 0)
+                    oSerialPort.WriteTimeout = WriteTimeoutMs;
+                if (ReadBufferSize > 0)
+                    oSerialPort.ReadBufferSize = ReadBufferSize;
+                if (WriteBufferSize > 0)
+                    oSerialPort.WriteBufferSize = WriteBufferSize;
+                oSerialPort.NewLine = TextNewLine;
+                oSerialPort.Encoding = Encoding;
+                oSerialPort.DataReceived += OSerialPort_DataReceived;
+                e.AddResult(Result.CreateResultSuccess());
+            });
         }
 
         private void OSerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -137,27 +138,36 @@ namespace DSG.Drivers.SerialPort
         }
 
 
-        private void SerialPort_OnDestroyImplementation(object sender, ResultEventArgs e)
-        {          
-            if (oSerialPort != null)
+        private async Task SerialPort_OnDestroyImplementationAsync(object sender, ResultEventArgs e)
+        {
+            await Task.Run(() =>
+            {
+                if (oSerialPort != null)
+                {
+                    oSerialPort.Close();
+                    oSerialPort.Dispose();
+                }
+                oSerialPort = null;
+                e.AddResult(Result.CreateResultSuccess());
+            });
+        }
+
+        private async Task SerialPort_OnConnectImplementationAsync(object? sender, ResultEventArgs e)
+        {
+            await Task.Run(() =>
+            {
+                oSerialPort.Open();
+                e.AddResult(Result.CreateResultSuccess());
+            });
+        }
+
+        private async Task SerialPort_OnDisconnectImplementationAsync(object? sender, ResultEventArgs e)
+        {
+            await Task.Run(() =>
             {
                 oSerialPort.Close();
-                oSerialPort.Dispose();
-            }
-            oSerialPort = null;
-            e.AddResult(Result.CreateResultSuccess());
-        }
-
-        private void SerialPort_OnConnectImplementation(object? sender, ResultEventArgs e)
-        {
-            oSerialPort.Open();
-            e.AddResult(Result.CreateResultSuccess());
-        }
-
-        private void SerialPort_OnDisconnectImplementation(object? sender, ResultEventArgs e)
-        {
-            oSerialPort.Close();
-            e.AddResult(Result.CreateResultSuccess());
+                e.AddResult(Result.CreateResultSuccess());
+            });
         }
 
         protected override async Task<Result> ReadImplementationAsync()

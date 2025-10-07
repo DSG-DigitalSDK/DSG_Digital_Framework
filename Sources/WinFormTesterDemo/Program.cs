@@ -15,7 +15,7 @@ namespace WinFormTesterDemo
         {
             string sM = nameof(SerialTest);
 
-            using (SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
+            SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
             {
                 Name = "Serial1",
                 ConnectionName = "SerialTest",
@@ -27,8 +27,8 @@ namespace WinFormTesterDemo
                 EnableReader = true,
                 EnableWriter = true,
                 DataMode = DSG.Base.StreamMode.Text
-            })
-            using (SerialPort oSer2 = new DSG.Drivers.SerialPort.SerialPort()
+            };
+            SerialPort oSer2 = new DSG.Drivers.SerialPort.SerialPort()
             {
                 Name = "Serial2",
                 ConnectionName = "SerialTest",
@@ -40,57 +40,58 @@ namespace WinFormTesterDemo
                 EnableReader = true,
                 EnableWriter = true,
                 DataMode = DSG.Base.StreamMode.Text
-            })
+            };
+            oSer1.OnRead += ((s, e) =>
             {
-                oSer1.OnRead += ((s, e) =>
-                {
-                    LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
-                    var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
-                    string sMsg = "Boh!";
-                    if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
-                    if (oObj?.Tag is String oS) sMsg = oS;
-                    LogMan.Message(sC, sM, $"{oSer1.Name} : Readed : {sMsg}");
-                });
-                oSer2.OnRead += ((s, e) =>
-                {
-                    LogMan.Message(sC, sM, $"{oSer2.Name} : Data Readed");
-                    var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
-                    string sMsg = "Boh!";
-                    if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
-                    if (oObj?.Tag is String oS) sMsg = oS;
-                    LogMan.Message(sC, sM, $"{oSer2.Name} : Readed : {sMsg}");
-                });
-                oSer1.OnWrite += ((s, e) =>
-                {
-                    LogMan.Message(sC, sM, $"{oSer1.Name} : Data Written");
-                });
-                oSer2.OnWrite += ((s, e) =>
-                {
-                    LogMan.Message(sC, sM, $"{oSer2.Name} : Data Written");
-                });
+                LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
+                var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
+                string sMsg = "Boh!";
+                if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
+                if (oObj?.Tag is String oS) sMsg = oS;
+                LogMan.Message(sC, sM, $"{oSer1.Name} : Readed : {sMsg}");
+            });
+            oSer2.OnRead += ((s, e) =>
+            {
+                LogMan.Message(sC, sM, $"{oSer2.Name} : Data Readed");
+                var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
+                string sMsg = "Boh!";
+                if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
+                if (oObj?.Tag is String oS) sMsg = oS;
+                LogMan.Message(sC, sM, $"{oSer2.Name} : Readed : {sMsg}");
+            });
+            oSer1.OnWrite += ((s, e) =>
+            {
+                LogMan.Message(sC, sM, $"{oSer1.Name} : Data Written");
+            });
+            oSer2.OnWrite += ((s, e) =>
+            {
+                LogMan.Message(sC, sM, $"{oSer2.Name} : Data Written");
+            });
 
 
-                oSer1.WriteData("S1 Ciao!");
-                oSer2.WriteData("S2 Ciao!");
+            oSer1.WriteData("S1 Ciao!");
+            oSer2.WriteData("S2 Ciao!");
+            oSer1.ReadData();
+            oSer2.ReadData();
 
-                Task.Run(() =>
+            Task.Run(() =>
+            {
+                for (int i = 1; i <= 100; i++)
                 {
-                    for (int i = 1; i <= 100; i++)
-                    {
-                        oSer1.EnqueueWriteData($"{oSer1.Name} : {i:f0} : Ciao!");
-                    }
-                });
+                    oSer1.EnqueueWriteData($"{oSer1.Name} : {i:f0} : Ciao!");
+                }
+            });
 
-                Task.Run(() =>
+            Task.Run(() =>
+            {
+                for (int i = 1; i <= 100; i++)
                 {
-                    for (int i = 1; i <= 100; i++)
-                    {
-                        oSer2.EnqueueWriteData($"{oSer2.Name} : {i:f0} : Ciao!");
-                        Thread.Sleep(200);
-                    }
-                });
-            }
+                    oSer2.EnqueueWriteData($"{oSer2.Name} : {i:f0} : Ciao!");
+                    Thread.Sleep(200);
+                }
+            });
         }
+        
 
         static void ConnectionTest( int iObjects, int iLoop)
         {
@@ -149,7 +150,8 @@ namespace WinFormTesterDemo
             LogMan.CreateAndRegisterDefaultLoggers(true, true, false);
             LogMan.Create();
 
-            ConnectionTest(5, 5);
+           // ConnectionTest(5, 5);
+            SerialTest();
 
             Application.Run(new Form1());
             LogMan.Destroy();
