@@ -116,7 +116,7 @@ namespace DSG.Base
                 LogMan.Exception(sC, sM, Name, ex);
                 try
                 {
-                    await DestroyAsync();
+                    await DestroyAsync(false);
                 }
                 catch { }
                 if (ThrowExceptions)
@@ -139,10 +139,13 @@ namespace DSG.Base
         /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
         /// </summary
         /// <returns>operation result</returns>
-        public async Task<Result> DestroyAsync()
+        async Task<Result> DestroyAsync(bool bLock)
         {
             string sM = nameof(DestroyAsync);
-            await semaphore.WaitAsync();
+            if (bLock)
+            {
+                await semaphore.WaitAsync();
+            }
             try
             {
                 LogMan.Trace(sC, sM, $"Destroying '{Name}'");
@@ -187,11 +190,15 @@ namespace DSG.Base
             }
             finally
             {
-                semaphore.Release();
+                if (bLock)
+                {
+                    semaphore.Release();
+                }
             }
 
         }
 
+        public async Task<Result> DestroyAsync() => await DestroyAsync(true);
 
         public Result Create()
         {

@@ -10,30 +10,20 @@ namespace WinFormTesterDemo
     internal static class Program
     {
         static string sC = nameof(Program);
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        static void Main()
+
+        static void SerialTest()
         {
-            string sM = nameof(Program);
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
+            string sM = nameof(SerialTest);
 
-            LogMan.MinLogLevel = LogLevel.Message;
-            LogMan.CreateAndRegisterDefaultLoggers(true, true, false);
-            LogMan.Create();
-
-            using ( SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
+            using (SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
             {
                 Name = "Serial1",
                 ConnectionName = "SerialTest",
                 ConnectionString = "COM1/57600/ODD/7/1/NONE",
                 PollingReadMs = 200,
-                PollingWriteMs= 0,
-                ReadTimeoutMs  = 100,
-                WriteTimeoutMs = 100,  
+                PollingWriteMs = 0,
+                ReadTimeoutMs = 100,
+                WriteTimeoutMs = 100,
                 EnableReader = true,
                 EnableWriter = true,
                 DataMode = DSG.Base.StreamMode.Text
@@ -53,14 +43,14 @@ namespace WinFormTesterDemo
             })
             {
                 oSer1.OnRead += ((s, e) =>
-                    {
-                        LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
-                        var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
-                        string sMsg = "Boh!";
-                        if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
-                        if (oObj?.Tag is String oS) sMsg = oS;
-                        LogMan.Message(sC,sM, $"{oSer1.Name} : Readed : {sMsg}");
-                    });
+                {
+                    LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
+                    var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
+                    string sMsg = "Boh!";
+                    if (oObj?.Tag is DataBuffer oB) sMsg = oB.ToStringAscii();
+                    if (oObj?.Tag is String oS) sMsg = oS;
+                    LogMan.Message(sC, sM, $"{oSer1.Name} : Readed : {sMsg}");
+                });
                 oSer2.OnRead += ((s, e) =>
                 {
                     LogMan.Message(sC, sM, $"{oSer2.Name} : Data Readed");
@@ -99,10 +89,70 @@ namespace WinFormTesterDemo
                         Thread.Sleep(200);
                     }
                 });
-
-                Application.Run(new Form1());
-                LogMan.Destroy();
             }
+        }
+
+        static void ConnectionTest( int iObjects, int iLoop)
+        {
+            List<IConnectable> oList = new List<IConnectable>();
+            for (int i = 0; i < iObjects; i++)
+            {
+                oList.Add(new ConnectableTester()
+                {
+                    Name = $"Test {i + 1}",
+                    ConnectionName = $"ConnTest {i + 1}",
+                    ConnectionTimeoutMs = 1000,
+                    PollingReadMs = 1000,
+                    PollingWriteMs = 1000,
+                    ReadTimeoutMs = 1000,
+                    EnableReader = false,
+                    EnableWriter = false,
+                });
+            }
+
+            //foreach ( var o in oList) 
+            Parallel.ForEach(oList, async o =>
+            {
+                await o.CreateAsync();
+                await o.ConnectAsync();
+            });
+
+            for (int i = 0; i < iLoop; i++)
+            {
+                //foreach (var o in oList)
+                Parallel.ForEach(oList, async o =>
+                {
+                    await o.ReadDataAsync();
+                });
+                Parallel.ForEach(oList, async o =>
+                {
+                    await o.WriteDataAsync($"{o.Name} : {i + 1}");
+                });
+            }
+
+        }
+
+
+
+        /// <summary>
+        ///  The main entry point for the application.
+        /// </summary>
+        [STAThread]
+        static async Task Main()
+        {
+            string sM = nameof(Program);
+            // To customize application configuration such as set high DPI settings or default font,
+            // see https://aka.ms/applicationconfiguration.
+            ApplicationConfiguration.Initialize();
+
+            LogMan.MinLogLevel = LogLevel.Message;
+            LogMan.CreateAndRegisterDefaultLoggers(true, true, false);
+            LogMan.Create();
+
+            ConnectionTest(5, 5);
+
+            Application.Run(new Form1());
+            LogMan.Destroy();
         }
     }
 }
