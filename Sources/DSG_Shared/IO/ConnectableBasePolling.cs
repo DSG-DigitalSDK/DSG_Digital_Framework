@@ -52,14 +52,18 @@ namespace DSG.IO
 
         public ConnectableBasePolling()
         {
-            oReadThread.OnWakeup += TaskReadData;
-            oWriteThread.OnSignal += TaskWriteData;
+            oReadThread.OnThreadWakeupAsync += TaskReadData;
+            oWriteThread.OnThreadTriggerAsync += TaskWriteData;
             OnCreateImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += ConnectableBasePolling_OnDestroyImplementationAsync;
             OnConnectImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
             OnDisconnectImplementationAsync += ConnectableBasePolling_OnDisconnectImplementationAsync;
         }
 
+        private Task OReadThread_OnThreadWakeup(object arg1, ThreadEventArgs arg2)
+        {
+            throw new NotImplementedException();
+        }
 
         private async Task ConnectableBasePolling_OnCreateImplementationAsync(object sender, ResultEventArgs e)
         {
@@ -83,22 +87,18 @@ namespace DSG.IO
             });
         }
 
-        private async Task ConnectableBasePolling_OnConnectImplementationAsync(object? sender, ResultEventArgs e)
+        private Task ConnectableBasePolling_OnConnectImplementationAsync(object? sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
-            {
-                oReadThread.TimerStart();
-                oWriteThread.TimerStart();
-            });
+            oReadThread.TimerStart();
+            oWriteThread.TimerStart();
+            return Task.CompletedTask;
         }
 
-        private async Task ConnectableBasePolling_OnDisconnectImplementationAsync(object? sender, ResultEventArgs e)
+        private Task ConnectableBasePolling_OnDisconnectImplementationAsync(object? sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
-            {
-                oReadThread.TimerStop();
-                oReadThread.TimerStop();
-            });
+            oReadThread.TimerStop();
+            oWriteThread.TimerStop();
+            return Task.CompletedTask;
         }
 
         public void EnqueueWriteData( object oBuffer)
@@ -109,7 +109,7 @@ namespace DSG.IO
             oWriteThread.ThreadSignal();
         }
 
-        private void TaskReadData(object? sender, EventArgs e)
+        private Task TaskReadData(object? sender, EventArgs e)
         {
             string sM = nameof(TaskReadData);
             Result res;
@@ -122,9 +122,10 @@ namespace DSG.IO
             {
                 LogMan.Error(sC, sM, $"{oReadThread.Name} : Error reading data : {res.ErrorMessage}");
             }
+            return Task.CompletedTask;  
         }
 
-        private void TaskWriteData(object? sender, EventArgs e)
+        private Task TaskWriteData(object? sender, EventArgs e)
         {
             string sM = nameof(TaskWriteData);
             while (oWriteQueue.Count > 0)
@@ -136,6 +137,7 @@ namespace DSG.IO
                     Thread.Sleep(PollingWriteMs);  
                 }
             }
+            return Task.CompletedTask;  
         }
     }
 }

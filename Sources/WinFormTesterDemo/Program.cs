@@ -1,8 +1,10 @@
 using System.Data.Common;
 using DSG.Drivers.SerialPort;
+using DSG.Drivers.Siemens;
 using DSG.Imaging;
 using DSG.IO;
 using DSG.Log;
+using DSG.Threading;
 
 
 namespace WinFormTesterDemo
@@ -91,7 +93,48 @@ namespace WinFormTesterDemo
                 }
             });
         }
-        
+
+        public static void ThreadTest()
+        {
+            string sM = nameof(ThreadTest); 
+            var oTH = new ThreadBase()
+            {
+                Name = "Test Thread",
+                TimerEnabled = true,
+            };
+            oTH.OnThreadWakeupAsync += (async (s, e) => 
+            { 
+                LogMan.Message(sC, sM, "Timeout Start");
+                await Task.Delay(2000);
+                LogMan.Message(sC, sM, "Timeout End"); 
+            });
+            oTH.OnThreadTriggerAsync += (s, e) => { LogMan.Message(sC, sM, "Signal"); return Task.CompletedTask; };
+            oTH.Create();
+
+            Task.Run(async ()=>
+            {
+                await Task.Delay(5000);
+                oTH.TimerStop();
+                await Task.Delay(5000);
+                for (int i = 0; i < 5; i++)
+                {
+                    oTH.ThreadSignal();
+                    await Task.Delay(500);
+                }
+                await Task.Delay(5000);
+                oTH.TimerStart();
+                await Task.Delay(5000);
+                oTH.TimerStop();
+                oTH.WakeupTimeMs = 10;
+                oTH.AllowEventOverlap = true;
+                oTH.TimerStart();
+                await Task.Delay(5000);
+                oTH.AllowEventOverlap = false;
+                await Task.Delay(5000);
+                oTH.Destroy();
+            });
+        }
+
 
         static void ConnectionTest( int iObjects, int iLoop)
         {
@@ -143,6 +186,23 @@ namespace WinFormTesterDemo
             });
         }
 
+        static void SiemensTest(string sPlcIP, int iRack, int iSlot)
+        {
+            S7DataHandler oPlc = new S7DataHandler()
+            {
+                Name = "Siemens Plc",
+                ConnectionName = "Test",
+                ConnectionString = $"{sPlcIP}\\{iRack}\\{iSlot}",
+                EnableReader = true,
+                PollingReadMs = 1000, 
+                EnableWriter = false,                 
+            };
+            oPlc.ReadDataListTemplate.Add(S7PlcDataItem.Create(S7PlcArea.DB, 50, 0, 40));
+            oPlc.ReadDataListTemplate.Add(S7PlcDataItem.Create(S7PlcArea.DB, 50, 50, 10));
+            oPlc.ReadDataListTemplate.Add(S7PlcDataItem.Create(S7PlcArea.DB, 50, 60, 100));
+            oPlc.Create();
+            //oPlc.Connect();
+        }
 
 
         /// <summary>
@@ -162,15 +222,19 @@ namespace WinFormTesterDemo
 
             //            ConnectionTest(1, 1000);
             // SerialTest();
-            var oPlcItem = DSG.Drivers.Siemens.S7PlcDataItem.Create(DSG.Drivers.Siemens.S7PlcArea.DB, 50, 30, 100);
-            for (int i = 0; i < 100; i++)
-                oPlcItem.Data[i] = (byte)(i + 1);
 
-            var s7 = DSG.Drivers.Siemens.S7DataConversion.ToS7DataItem(oPlcItem);
-            GC.Collect();
-            GC.Collect();
+            // SiemensTest("127.0.0.1", 0, 0);
 
-            var oItemBack = DSG.Drivers.Siemens.S7DataConversion.ToPlcDataItem(s7.Value);
+            ThreadTest();
+            //var oPlcItem = DSG.Drivers.Siemens.S7PlcDataItem.Create(DSG.Drivers.Siemens.S7PlcArea.DB, 50, 30, 100);
+            //for (int i = 0; i < 100; i++)
+            //    oPlcItem.Data[i] = (byte)(i + 1);
+
+            //var s7 = DSG.Drivers.Siemens.S7DataConversion.ToS7DataItem(oPlcItem);
+            //GC.Collect();
+            //GC.Collect();
+
+            //var oItemBack = DSG.Drivers.Siemens.S7DataConversion.ToPlcDataItem(s7.Value);
 
             Application.Run(new Form1());
             LogMan.Destroy();

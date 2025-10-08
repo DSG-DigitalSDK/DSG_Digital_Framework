@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace DSG.Drivers.Siemens
 {
-    internal class S7DataHandler : ConnectableBasePolling
+    public class S7DataHandler : ConnectableBasePolling
     {
         string sC = nameof(S7DataHandler);
 

@@ -1,319 +1,275 @@
 ﻿using DSG.Base;
 using DSG.Log;
-using DSG.Threading;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Diagnostics.Eventing.Reader;
+using System.Reflection.Metadata;
+using System.Threading;
 using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace DSG.Threading
 {
     /// <summary>
-    /// Simple Thread Handler<br/> 
-    /// <para>
-    /// This class provides a synchronization event mechanism for simple operations.<br/>
-    /// Only three AutoResetEvent are provided:<br/>
-    /// <list type="bullet">Trigger Signal - raised by a source (task,thread, another async caller method) to communicate that a condition occours</list>
-    /// <list type="bullet">Quit Signal - raised by another task od by the destructor to inform about the abort of the source</list>
-    /// <list type="bullet">Tiemout Signal (when used) - raised periodically</list>
-    /// </para>
-    /// <para>
-    /// This class can also manage automatically a Thread for long time operations<br/>
-    /// The created task runs and wait for any signal that can raise a .net event accordingly<br/>
-    /// <seealso cref="ThreadBase.OnSignal"/> <seealso cref="ThreadBase.OnQuit"/> <seealso cref="ThreadBase.OnWakeup"/><br/>
-    /// This is the core class for the producer consumer implementation<br/>
-    public class ThreadBase: CreateBase
+    /// ThreadBase provides a thread with simple signaling mechanism.<br/>
+    /// Supports:
+    /// <list type="bullet">
+    /// <item>External trigger signal</item>
+    /// <item>Quit signal</item>
+    /// <item>Polling timer signal (Wakeup)</item>
+    /// </list>
+    /// </summary>
+    public class ThreadBase : CreateBase
     {
-        static readonly string sClassName = nameof(ThreadBase);
+        private static readonly string sC = nameof(ThreadBase);
 
         /// <summary>
-        /// Thread signal maps
+        /// Signal type for the thread
         /// </summary>
         public enum EnumSignalType
         {
-            /// <summary>
-            /// Unknown or unmapped signal
-            /// </summary>
             Unknown = 0,
-            /// <summary>
-            /// Operation aborted due to exception during AutoresetEvent handling
-            /// </summary>
             Exception = 1,
-            /// <summary>
-            /// Quit AutoresetEvent is set
-            /// </summary>
             Quit = 2,
-            /// <summary>
-            /// Trigger AutoresetEvent is set
-            /// </summary>
             Trigger = 3,
-            /// <summary>
-            /// Timer polling AutoresetEvent is set
-            /// </summary>
             Timeout = 4,
-            /// <summary>
-            /// Timer polling AutoresetEvent is set
-            /// </summary>
-            TimeDrop = 4,
+            TimeDrop = 5,
         }
 
-        // Microsoft specifications : for Long time running operations is suggested to use Thread instead of Task
-        Thread? oThread;      
+        private Thread? oThread;
+        private readonly AutoResetEvent oSignalExecute = new(false);
+        private readonly AutoResetEvent oSignalQuit = new(false);
+        private readonly AutoResetEvent oSignalWakeupRestart = new(false);
 
-        readonly AutoResetEvent oSignalExecute = new AutoResetEvent(false);
-        readonly AutoResetEvent oSignalQuit = new AutoResetEvent(false);
-        readonly AutoResetEvent oSignalWakeupRestart = new AutoResetEvent(false);
+        private CancellationTokenSource oCts = new();
+
+        private int iWakeupTimeMs = 1000;
 
         /// <summary>
-        /// Cancellation oken to notify chain processing that the Thread is about to abort
+        /// Enable or disable the timer (Wakeup events)
         /// </summary>
-        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-        int iWakeupTime = 1000;
-        private CancellationTokenSource oCancellationTokenSource;
-
-        public bool TimerEnabled{get;set;} = true;
+        public bool TimerEnabled { get; set; } = true;
 
         /// <summary>
-        /// Setup polling time. Set to Zero to disable (Infinite wait time)
+        /// Polling interval in milliseconds. Set 0 to wait indefinitely
         /// </summary>
         public int WakeupTimeMs
         {
-            get
-            {
-                return iWakeupTime;
-            }
+            get => Volatile.Read(ref iWakeupTimeMs);
             set
             {
-                iWakeupTime = value;
-                // Set the dummy event to wake-up the thread and restart polling timer
-                oSignalWakeupRestart.Set();
+                Volatile.Write(ref iWakeupTimeMs, value);
+                oSignalWakeupRestart.Set(); // Wake up thread to reset timer
             }
         }
 
-     
+        public bool AllowEventOverlap { get; set; } = false;
 
         /// <summary>
-        /// Notify that the thread is running
+        /// True if thread is alive
         /// </summary>
         public bool Running => oThread?.IsAlive ?? false;
 
+        public bool EventTaskEnable { get; private set; }
+
+        //  public object OnThreadWakeup { get; set; }
+        //  public object OnTaskWakeup { get; set; }
 
         /// <summary>
-        /// Raised when external trigger event rises 
+        /// Raised on external trigger
         /// </summary>
-        public event EventHandler<ThreadEventArgs>? OnSignal;
+        public event Func<object, ThreadEventArgs, Task>? OnThreadTriggerAsync;
 
         /// <summary>
-        /// Raised on timeout
+        /// Raised on polling timer
         /// </summary>
-        public event EventHandler<ThreadEventArgs>? OnWakeup;
+        public event Func<object, ThreadEventArgs, Task>? OnThreadWakeupAsync;
 
         /// <summary>
-        /// Raised when quit event rises 
+        /// Raised on quit signal
         /// </summary>
-        public event EventHandler? OnQuit;
-
+        public event Func<object, ThreadEventArgs, Task>? OnThreadQuitAsync;
 
         public ThreadBase()
         {
-            OnCreateImplementationAsync += ThreadBase_CreateImplementationAsync;
-            OnDestroyImplementationAsync += ThreadBase_DestroyImplementationAsync;
+            OnCreateImplementationAsync += CreateThreadAsync;
+            OnDestroyImplementationAsync += DestroyThreadAsync;
+            OnDisposing += ThreadBase_OnDisposing;
         }
 
+        private void ThreadBase_OnDisposing(object? sender, EventArgs e)
+        {
+            ThreadQuit();
+            oCts?.Dispose();
+            oSignalExecute?.Dispose();
+            oSignalQuit?.Dispose();
+            oSignalWakeupRestart?.Dispose();
+        }
 
-        public bool TimerStart()=> TimerEnabled = true;
-        public bool TimerStop() => TimerEnabled = false;
+        public void TimerStart() => TimerEnabled = true;
+        public void TimerStop() => TimerEnabled = false;
 
-        private async Task ThreadBase_CreateImplementationAsync(object? sender, ResultEventArgs e)
+        public void ThreadSignal() => oSignalExecute.Set();
+
+        public void ThreadQuit()
+        {
+            oCts?.Cancel();
+            oSignalQuit?.Set();
+        }
+
+        #region Thread Lifecycle
+
+        private async Task CreateThreadAsync(object? sender, ResultEventArgs e)
         {
             await Task.Run(() =>
             {
-                string sMethod = nameof(ThreadBase_CreateImplementationAsync);
-                cancellationTokenSource = new CancellationTokenSource();
+                LogMan.Message(sC, nameof(CreateThreadAsync), $"{Name}: Creating thread");
 
-                LogMan.Message(sClassName, sMethod, $"{Name} : Creating thread");
-
+                oCts = new CancellationTokenSource();
                 oSignalExecute.Reset();
                 oSignalQuit.Reset();
                 oSignalWakeupRestart.Reset();
 
-                oThread = new Thread(ThreadJob);
-                oThread.IsBackground = true;
+                oThread = new Thread(ThreadJob)
+                {
+                    IsBackground = true,
+                    Name = Name
+                };
                 oThread.Start();
 
                 e.AddResult(Result.CreateResultSuccess());
             });
         }
 
-        protected async Task ThreadBase_DestroyImplementationAsync(object? sender, ResultEventArgs e)
+        private async Task DestroyThreadAsync(object? sender, ResultEventArgs e)
         {
             await Task.Run(() =>
             {
-                string sMethod = nameof(ThreadBase_DestroyImplementationAsync);
-                LogMan.Message(sClassName, sMethod, $"{Name} : Destroying thread");
+                LogMan.Message(sC, nameof(DestroyThreadAsync), $"{Name}: Destroying thread");
+
                 ThreadQuit();
+
                 if (oThread != null && oThread.IsAlive)
                 {
                     if (!oThread.Join(5000))
-                    {
-                        LogMan.Warning(sClassName, sMethod, $"Task {Name} Doesn't stop");
-                    }
+                        LogMan.Warning(sC, nameof(DestroyThreadAsync), $"Thread {Name} did not stop in 5s.");
                 }
+
                 oThread = null;
-                Initialized = false;
                 e.AddResult(Result.CreateResultSuccess());
             });
         }
 
-        /// <summary>
-        /// Signal trigger on working thread
-        /// </summary>
-        public void ThreadSignal()
+        #endregion
+
+        #region Thread Execution
+
+        private void ThreadJob()
         {
-            oSignalExecute?.Set();
-        }
+            string sM = nameof(ThreadJob);
+            LogMan.Message(sC, sM, $"{Name}: Thread started");
 
-        /// <summary>
-        /// Raise quit trigger on working thread
-        /// </summary>
-        public void ThreadQuit()
-        {
-            cancellationTokenSource?.Cancel();
-            oSignalQuit?.Set();
-        }
+            var events = new WaitHandle[] { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
 
-        #region Working thread code
-
-
-
-        /// <summary>
-        /// The thread loop job
-        /// </summary>
-        void ThreadJob()
-        {
-            string sMethod = nameof(ThreadJob);
-            bool bExit = false;
-            LogMan.Message(sClassName, sMethod, $"{Name} : Starting thread");
             try
             {
-                AutoResetEvent[] oEvents = { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
-                while (!bExit)
+                while (true)
                 {
-                    int iTime = iWakeupTime == 0 ? Timeout.Infinite : (int)iWakeupTime;
-                    int iEventID = WaitHandle.WaitAny(oEvents, iTime);
-                    {
-                        bExit = iEventID == 0;
-                        if (!Running)
-                        {
-                            continue;
-                        }
-                        ProcessEvents(iEventID);
-                    }
+                    if (oCts?.IsCancellationRequested == true)
+                        break;
+
+                    int waitTime = WakeupTimeMs == 0 ? Timeout.Infinite : WakeupTimeMs;
+                    int index = WaitHandle.WaitAny(events, waitTime);
+
+                    if (index == 0 || oCts?.IsCancellationRequested == true)
+                        break;
+
+                    ProcessEvent(index);
                 }
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sClassName, sMethod, Name, ex);
+                LogMan.Exception(sC, sM, Name, ex);
             }
-            LogMan.Message(sClassName, sMethod, $"{Name} : Thread end");
+
+            LogMan.Message(sC, sM, $"{Name}: Thread ended");
         }
 
-        /// <summary>
-        /// Processes AutoReseEvent ID and raises events accordingly
-        /// </summary>
-        /// <param name="iEventID"></param>
-        /// <returns></returns>
-        EnumSignalType ProcessEvents(int iEventID)
-        {
-            string sMethod = nameof(ProcessEvents);
-            switch (iEventID)
-            {
-                case 0:
-                    {
-                        LogMan.Message(sClassName, sMethod, $"{Name} : Detected quit signal");
-                        try
-                        {
-                            OnQuit?.Invoke(this, EventArgs.Empty);
-                            return EnumSignalType.Quit;
-                        }
-                        catch (Exception ex)
-                        {
-                            LogMan.Exception(sClassName, sMethod, Name, ex);
-                            return EnumSignalType.Exception;
-                        }
-                    }
-                case 1:
-                    {
-                        try
-                        {
-                            OnSignal?.Invoke(this, new ThreadEventArgs()
-                            {
-                                Thread = oThread,
-                                CancellationTokenSource = oCancellationTokenSource,
-                            });
-                            return EnumSignalType.Trigger;
-                        }
-                        catch (Exception ex)
-                        {
-                            LogMan.Exception(sClassName, sMethod, Name, ex);
-                            return EnumSignalType.Exception;
-                        }
-                    }
-                case 2:
-                default:
-                    {
-                        try
-                        {
-                            if (!TimerEnabled)
-                            {
-                                return EnumSignalType.TimeDrop;
-                            }
-                            OnWakeup?.Invoke(this, new ThreadEventArgs()
-                            {
-                                Thread = oThread,
-                                CancellationTokenSource = oCancellationTokenSource,
-                            });
-                            return EnumSignalType.Timeout;
-                        }
-                        catch (Exception ex)
-                        {
-                            LogMan.Exception(sClassName, sMethod, Name, ex);
-                            return EnumSignalType.Exception;
-                        }
-                    }
-            }
-        }
-        #endregion
 
-        /// <summary>
-        /// Wait for an AutoResetEvent signal.
-        /// <para>Raises events accordingly </para> 
-        /// <para>Any method caller will block until a signal comes</para> 
-        /// </summary>
-        /// <param name="iWakeupTime">maximum timeout delay: 0 for infinite timeout</param>
-        /// <returns></returns>
-        public EnumSignalType WaitForSignal(int iWakeupTime)
+        private void ProcessEvent(int index)
         {
-            string sMethod = nameof(WaitForSignal);
-            LogMan.Message(sClassName, sMethod, $"{Name} : Waiting for event");
             try
             {
-                AutoResetEvent[] oEvents = { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
-                int iTime = iWakeupTime == 0 ? Timeout.Infinite : (int)iWakeupTime;
-                EnumSignalType eRet = EnumSignalType.Unknown;
-                while ((eRet = ProcessEvents(WaitHandle.WaitAny(oEvents, iTime))) == EnumSignalType.TimeDrop);
-                return eRet;
+                switch (index)
+                {
+                    case 1:
+                        _ = RaiseAsync(OnThreadTriggerAsync, "Trigger");
+                        break;
+                    case 2:
+                        if (TimerEnabled)
+                            _ = RaiseAsync(OnThreadWakeupAsync, "Wakeup");
+                        break;
+                    default:
+                        _ = RaiseAsync(OnThreadQuitAsync, "Quit");
+                        break;
+                }
             }
             catch (Exception ex)
             {
-                LogMan.Exception(sClassName, sMethod, Name, ex);
-                return EnumSignalType.Exception;
+                LogMan.Exception(sC, nameof(ProcessEvent), Name, ex);
             }
         }
 
-      
+        private async Task RaiseAsync(Func<object, ThreadEventArgs, Task>? evt, string tag)
+        {
+            string sM = nameof(RaiseAsync);
+            if (evt == null) return;
+
+            try
+            {
+                var args = new ThreadEventArgs
+                {
+                    Thread = oThread,
+                    CancellationTokenSource = oCts
+                };
+
+                if (AllowEventOverlap)
+                    _ = Task.Run(() => evt.Invoke(this, args)).ContinueWith(LogUnhandledTaskException);
+                else
+                    await evt.Invoke(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogMan.Exception(sC, sM, $"{Name}/{tag}", ex);
+            }
+        }
+
+        private void LogUnhandledTaskException(Task t)
+        {
+            String sM = nameof(LogUnhandledTaskException);
+            if (t.IsFaulted && t.Exception != null)
+                LogMan.Exception(sC, sM, Name, t.Exception);
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Wait synchronously for any thread signal
+        /// </summary>
+        /// <param name="timeoutMs">Timeout in milliseconds, 0 = infinite</param>
+        /// <returns>Signal type received</returns>
+        public EnumSignalType WaitForSignal(int timeoutMs)
+        {
+            var events = new WaitHandle[] { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
+            int waitTime = timeoutMs == 0 ? Timeout.Infinite : timeoutMs;
+            int index = WaitHandle.WaitAny(events, waitTime);
+
+            return index switch
+            {
+                0 => EnumSignalType.Quit,
+                1 => EnumSignalType.Trigger,
+                2 => TimerEnabled ? EnumSignalType.Timeout : EnumSignalType.TimeDrop,
+                _ => EnumSignalType.Unknown
+            };
+        }
+
     }
 }

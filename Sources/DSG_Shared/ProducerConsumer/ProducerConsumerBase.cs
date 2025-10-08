@@ -66,7 +66,7 @@ namespace DSG.ProducerConsumer
 
         public ProducerConumerBase()
         {
-            oConsumerThread.OnSignal += ConsumerTask;
+            oConsumerThread.OnThreadTriggerAsync += ConsumerTaskAsync;
             OnCreateImplementationAsync  += ProducerConumerBase_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += ProducerConumerBase_OnDestroyImplementationAsync;
         }
@@ -79,7 +79,7 @@ namespace DSG.ProducerConsumer
                 string sM = nameof(ProducerConumerBase_OnCreateImplementationAsync);
                 oConsumerThread.Name = $"{Name}.ConsumerThread";
                 oConsumerThread.WakeupTimeMs = 0;
-                oConsumerThread.OnSignal += ConsumerTask;
+                oConsumerThread.OnThreadTriggerAsync += ConsumerTaskAsync;
                 e.AddResult(oConsumerThread.Create());
             });
         }
@@ -94,49 +94,52 @@ namespace DSG.ProducerConsumer
         }
 
 
-        void ConsumerTask(object? sender, ThreadEventArgs e)
+        async Task ConsumerTaskAsync(object? sender, ThreadEventArgs e)
         {
-            string sM = nameof(ConsumerTask);
-            try
+            await Task.Run(() =>
             {
-                int iPar = Math.Max(1,MaxParallelism);
-                while (!oProducerQueue.QueueEmpty)
+                string sM = nameof(ConsumerTaskAsync);
+                try
                 {
-                    e.CancellationTokenSource?.Token.ThrowIfCancellationRequested();
-                    Parallel.For(0, iPar, X =>
+                    int iPar = Math.Max(1, MaxParallelism);
+                    while (!oProducerQueue.QueueEmpty)
                     {
-                        try
+                        e.CancellationTokenSource?.Token.ThrowIfCancellationRequested();
+                        Parallel.For(0, iPar, X =>
                         {
-                            OnConsuming?.Invoke(this, EventArgs.Empty);
-                            var oT = oProducerQueue.Dequeue();
-                            if (oT != null)
+                            try
                             {
-                                LogMan.Trace(sC, sM, $"{Name} : Data Consumed");
-                                oConsumerCounter.TimeStart();
-                                OnConsume?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
-                                oConsumerCounter.AddStatisticTime();
-                                oConsumerCounter.AddValidEvent();
+                                OnConsuming?.Invoke(this, EventArgs.Empty);
+                                var oT = oProducerQueue.Dequeue();
+                                if (oT != null)
+                                {
+                                    LogMan.Trace(sC, sM, $"{Name} : Data Consumed");
+                                    oConsumerCounter.TimeStart();
+                                    OnConsume?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
+                                    oConsumerCounter.AddStatisticTime();
+                                    oConsumerCounter.AddValidEvent();
+                                }
                             }
-                        }
-                        catch (OperationCanceledException canc)
-                        {
-                            LogMan.Trace(sC, sM, $"{Name} : Data Dropped");
-                            oConsumerCounter.AddDropEvent();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogMan.Exception(sC, sM, ex);
-                            oConsumerCounter.AddErrorEvent();
-                            OnConsumeError?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
-                        }
-                    });
+                            catch (OperationCanceledException canc)
+                            {
+                                LogMan.Trace(sC, sM, $"{Name} : Data Dropped");
+                                oConsumerCounter.AddDropEvent();
+                            }
+                            catch (Exception ex)
+                            {
+                                LogMan.Exception(sC, sM, ex);
+                                oConsumerCounter.AddErrorEvent();
+                                OnConsumeError?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
+                            }
+                        });
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                oConsumerCounter.AddErrorEvent();
-                HandleError( sM,sM, ex,OnConsumeError );
-            }
+                catch (Exception ex)
+                {
+                    oConsumerCounter.AddErrorEvent();
+                    HandleError(sM, sM, ex, OnConsumeError);
+                }
+            });
         }
 
 

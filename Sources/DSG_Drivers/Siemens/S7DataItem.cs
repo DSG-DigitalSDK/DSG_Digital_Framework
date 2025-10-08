@@ -25,6 +25,13 @@ namespace DSG.Drivers.Siemens
         public int Length { get; set; }
         public byte[]? Data { get; set; }
 
+        public override string ToString()
+        {
+            if (Area == S7PlcArea.DB)
+                return $"{Area}:DB={DbNum}:Offset={Offset}:Size={Length}";
+            return $"{Area}:Offset={Offset}:Size={Length}";
+        }
+
         static public S7PlcDataItem Create(S7PlcArea area, int dbNum, int offset, int length)
         {
             if (length <= 0)

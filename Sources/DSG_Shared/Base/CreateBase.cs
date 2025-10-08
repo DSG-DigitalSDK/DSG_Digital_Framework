@@ -19,7 +19,7 @@ namespace DSG.Base
 
         public string Name { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
-        public bool Initialized { get; protected set; }
+        public bool Initialized { get; private set; }
         public bool ThrowExceptions { get; set; }
 
         readonly SemaphoreSlim createSemaphore= new SemaphoreSlim(1,1);   
@@ -63,7 +63,9 @@ namespace DSG.Base
         }
 
         protected Result HandleError(string sClass, string sMethod, OperationResult eResult, string? sErrorMessage, int iErrorCode, Exception? ex, EventHandler<ResultEventArgs>? oEvent)
-            => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError(eResult,sErrorMessage, iErrorCode, ex)), oEvent);  
+            => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError(eResult,sErrorMessage, iErrorCode, ex)), oEvent);
+        protected Result HandleError(string sClass, string sMethod, OperationResult eResult, string? sErrorMessage, int iErrorCode, EventHandler<ResultEventArgs>? oEvent)
+            => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError(eResult, sErrorMessage, iErrorCode, null)), oEvent);
         protected Result HandleError(string sClass, string sMethod, Exception ex, EventHandler<ResultEventArgs>? oEvent)
             => HandleError(sClass, sMethod, ResultEventArgs.CreateEventArgs(Result.CreateResultError( OperationResult.ErrorException, null, 0, ex)), oEvent);
 
