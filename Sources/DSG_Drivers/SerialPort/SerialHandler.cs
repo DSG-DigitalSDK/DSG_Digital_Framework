@@ -14,9 +14,14 @@ using DSG.IO;
 
 namespace DSG.Drivers.SerialPort
 {
-    public  class SerialPort : ConnectableBasePolling
+    public  class SerialHandler : ConnectableBasePolling
     {
-        static readonly string sClassName = nameof(SerialPort);
+        static readonly string sC = nameof(SerialHandler);
+
+        static readonly string connectionTemplate = @"COM(COM1-COM8)\Baudrate(9600-57600)\Parity(ODD-EVEN-NONE)\DataBit(7-8)\StopBit(0-1-1.5-2)\Handshake(NONE-RTS-XON)";
+
+        static readonly string splitter = @"\";
+        
 
         protected System.IO.Ports.SerialPort oSerialPort = null;
         public System.IO.Ports.SerialPort SerialPortNative => oSerialPort;
@@ -33,8 +38,8 @@ namespace DSG.Drivers.SerialPort
 
         public new bool Connected => oSerialPort?.IsOpen ?? false;
 
-        static string sConnectionInfo = "COM(COM1-COM8)/Baudrate(9600-57600)/Parity(ODD-EVEN-NONE)/DataBit(7-8)/StopBit(0-1-1.5-2)/Handshake(NONE-RTS-XON)";
-        public SerialPort()
+        static string sConnectionInfo = connectionTemplate;
+        public SerialHandler()
         {
             ConnectionString = sConnectionInfo;
             OnCreateImplementationAsync += SerialPort_OnCreateImplementationAsync;
@@ -51,10 +56,10 @@ namespace DSG.Drivers.SerialPort
             {
                 string sMethod = nameof(SerialPort_OnCreateImplementationAsync);
 
-                var strArr = ConnectionString.Split("/", StringSplitOptions.TrimEntries).ToList();
+                var strArr = ConnectionString.Split(splitter, StringSplitOptions.TrimEntries).ToList();
                 if (strArr.Count != 6)
                 {
-                    LogMan.Error(sClassName, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
+                    LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
                     e.AddResult(Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0));
                     return;
                 }

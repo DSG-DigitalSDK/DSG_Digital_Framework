@@ -15,6 +15,7 @@ namespace DSG.Base
         ErrorException,
         ErrorTimeout,
         ErrorDropData,
+        ErrorNotImplemented,
     }
 
     public enum StreamMode

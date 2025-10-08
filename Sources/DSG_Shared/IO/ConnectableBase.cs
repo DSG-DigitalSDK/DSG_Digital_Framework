@@ -29,7 +29,7 @@ namespace DSG.IO
         SemaphoreSlim oReadSemaphore = new SemaphoreSlim(1, 1);
         SemaphoreSlim oWriteSemaphore = new SemaphoreSlim(1, 1);
 
-        string sID => $"'{Name}/{ConnectionName}'";
+        protected string ObjectID => $"'{Name}/{ConnectionName}'";
 
         public bool Connected { get; protected set; }
         public string ConnectionName { get; set; }
@@ -82,25 +82,25 @@ namespace DSG.IO
             {
                 if (!Enabled)
                 {
-                    LogMan.Error(sC, sM, $"'{sID}' : can't connect using a DISABLED instance");
-                    return Result.CreateResultError(OperationResult.Error, $"'{sID}' : can't connect using a DISABLED instance", 0);
+                    LogMan.Error(sC, sM, $"'{ObjectID}' : can't connect using a DISABLED instance");
+                    return Result.CreateResultError(OperationResult.Error, $"'{ObjectID}' : can't connect using a DISABLED instance", 0);
                 }
                 if (!Initialized)
                 {
                     var ResC = await CreateAsync();
                     if (!Initialized)
                     {
-                        LogMan.Error(sC, sM, $"'{sID}' : Creation Error");
+                        LogMan.Error(sC, sM, $"'{ObjectID}' : Creation Error");
                         return ResC;
                     }
                 }
                 if (Connected)
                 {
-                    LogMan.Trace(sC, sM, $"{sID} already connected");
+                    LogMan.Trace(sC, sM, $"{ObjectID} already connected");
                     return Result.CreateResultSuccess();
                 }
                 OnConnecting?.Invoke(this, EventArgs.Empty);
-                LogMan.Trace(sC, sM, $"Connecting to '{sID}'");
+                LogMan.Trace(sC, sM, $"Connecting to '{ObjectID}'");
                 var oArgs = new ResultEventArgs();
                 if (OnConnectImplementationAsync != null)
                     await OnConnectImplementationAsync.Invoke(this, oArgs);
@@ -108,18 +108,18 @@ namespace DSG.IO
                 //    OnConnectImplementation.Invoke(this, oArgs);
                 //if (OnConnectImplementation == null && OnConnectImplementationAsync == null)
                 else
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, OnConnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, OnConnectError);
 
                 if (oArgs.Valid)
                 {
-                    LogMan.Message(sC, sM, $"{sID} Connected ");
+                    LogMan.Message(sC, sM, $"{ObjectID} Connected ");
                     Connected = true;
                     OnConnect?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
                 }
                 else
                 {
-                    LogMan.Error(sC, sM, $"Error Connecting to {sID} : {oArgs.ResultError.ErrorMessage} ");
+                    LogMan.Error(sC, sM, $"Error Connecting to {ObjectID} : {oArgs.ResultError.ErrorMessage} ");
                     Connected = false;
                     OnConnectError?.Invoke(this, oArgs);
                     return oArgs.ResultError;
@@ -161,9 +161,9 @@ namespace DSG.IO
                 }
                 if (OnDisconnectImplementationAsync == null)
                 {
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
                 }
-                LogMan.Trace(sC, sM, $"Disconnecting from {sID}");
+                LogMan.Trace(sC, sM, $"Disconnecting from {ObjectID}");
                 var oArgs = new ResultEventArgs();
                 if (OnDisconnectImplementationAsync != null)
                     await OnDisconnectImplementationAsync(this, oArgs);
@@ -171,11 +171,11 @@ namespace DSG.IO
                 //    OnDisconnectImplementation(this, oArgs);
                 //if (OnDisconnectImplementation == null && OnDisconnectImplementationAsync == null)
                 else
-                    return HandleError(sC, sM, OperationResult.Error, $"{sID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
 
                 if (oArgs.Valid)
                 {
-                    LogMan.Message(sC, sM, $"{sID} Disconnected");
+                    LogMan.Message(sC, sM, $"{ObjectID} Disconnected");
                     Connected = false;
                     if (bConn)
                     {
@@ -226,12 +226,12 @@ namespace DSG.IO
                     var oResConn = await ConnectAsync();
                     if (oResConn.HasError)
                     {
-                        LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
+                        LogMan.Error(sC, sMethod, $"{ObjectID} : Cannot open communication channel");
                         OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
                         return oResConn;
                     }
                 }
-                LogMan.Trace(sC, sMethod, $"{sID} : Reading Data");
+                LogMan.Trace(sC, sMethod, $"{ObjectID} : Reading Data");
                 OnReading?.Invoke(this, EventArgs.Empty);
                 Result oRes;
 
@@ -242,7 +242,7 @@ namespace DSG.IO
                 {
                     ReadCounters.AddStatisticTime();
                     ReadCounters.AddValidEvent();
-                    LogMan.Trace(sC, sMethod, $"{sID} : Read Data Successfull");
+                    LogMan.Trace(sC, sMethod, $"{ObjectID} : Read Data Successfull");
                     if (oRes.Tag != null)
                     {
                         OnRead?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
@@ -257,7 +257,7 @@ namespace DSG.IO
                     else
                     {
                         ReadCounters.AddErrorEvent();
-                        LogMan.Error(sC, sMethod, $"{sID} : Read Error");
+                        LogMan.Error(sC, sMethod, $"{ObjectID} : Read Error");
                     }
                     OnReadError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }
@@ -294,7 +294,7 @@ namespace DSG.IO
             {
                 if (oObj == null)
                 {
-                    LogMan.Error(sC, sMethod, $"{sID} : object null");
+                    LogMan.Error(sC, sMethod, $"{ObjectID} : object null");
                     return Result.CreateResultError(OperationResult.Error, "null object", 0);
                 }
                 if (!Connected)
@@ -302,12 +302,12 @@ namespace DSG.IO
                     var oResConn = await ConnectAsync();
                     if (oResConn.HasError)
                     {
-                        LogMan.Error(sC, sMethod, $"{sID} : Cannot open communication channel");
+                        LogMan.Error(sC, sMethod, $"{ObjectID} : Cannot open communication channel");
                         OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oResConn));
                         return oResConn;
                     }
                 }
-                LogMan.Trace(sC, sMethod, $"{sID} : Writing Data");
+                LogMan.Trace(sC, sMethod, $"{ObjectID} : Writing Data");
                 OnWriting?.Invoke(this, EventArgs.Empty);
                 Result oRes;
 
@@ -318,7 +318,7 @@ namespace DSG.IO
                 {
                     WriteCounters.AddStatisticTime();
                     WriteCounters.AddValidEvent();
-                    LogMan.Trace(sC, sMethod, $"{sID} : Write Data Successfull");
+                    LogMan.Trace(sC, sMethod, $"{ObjectID} : Write Data Successfull");
                     OnWrite?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }
                 else
@@ -330,7 +330,7 @@ namespace DSG.IO
                     else
                     {
                         WriteCounters.AddErrorEvent();
-                        LogMan.Error(sC, sMethod, $"{sID} : Write Error");
+                        LogMan.Error(sC, sMethod, $"{ObjectID} : Write Error");
                     }
                     OnWriteError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
                 }

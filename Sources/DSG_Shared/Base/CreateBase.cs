@@ -22,7 +22,7 @@ namespace DSG.Base
         public bool Initialized { get; protected set; }
         public bool ThrowExceptions { get; set; }
 
-        readonly SemaphoreSlim semaphore= new SemaphoreSlim(1,1);   
+        readonly SemaphoreSlim createSemaphore= new SemaphoreSlim(1,1);   
 
         public event EventHandler? OnCreating;
         public event EventHandler<ResultEventArgs>? OnCreate;
@@ -75,10 +75,14 @@ namespace DSG.Base
         public async Task<Result> CreateAsync()
         {
             string sM = nameof(CreateAsync);
-            await semaphore.WaitAsync();
+            await createSemaphore.WaitAsync();
             try
             {
-                //Destroy();
+                // Using await implies the use of a task to execute the method.
+                // then the task runs it enters in the createSemaphore.WaitAsync()
+                // that is currentily used in this task => DEADLOCK!
+                await DestroyNoLockAsync();
+
                 if (!Enabled)
                 {
                     LogMan.Trace(sC, sM, $"'{Name}' DISABLED");
@@ -118,7 +122,10 @@ namespace DSG.Base
                 LogMan.Exception(sC, sM, Name, ex);
                 try
                 {
-                    await DestroyAsync(false);
+                    // Using await implies the use of a task to execute the method.
+                    // then the task runs it enters in the createSemaphore.WaitAsync()
+                    // that is currentily used in this task => DEADLOCK!
+                    await DestroyNoLockAsync();
                 }
                 catch { }
                 if (ThrowExceptions)
@@ -129,25 +136,18 @@ namespace DSG.Base
             }
             finally
             {
-                semaphore.Release();    
+                createSemaphore.Release();    
             }
         }
 
        
-
-
         /// <summary>
-        /// Free resources <br/>
-        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
-        /// </summary
-        /// <returns>operation result</returns>
-        async Task<Result> DestroyAsync(bool bLock)
+        /// Deallocates resources, wothout lock to avoid DEADLOCK
+        /// </summary>
+        /// <returns>Operation Result</returns>
+        async Task<Result> DestroyNoLockAsync()
         {
-            string sM = nameof(DestroyAsync);
-            if (bLock)
-            {
-                await semaphore.WaitAsync();
-            }
+            string sM = nameof(DestroyNoLockAsync);
             try
             {
                 LogMan.Trace(sC, sM, $"Destroying '{Name}'");
@@ -191,17 +191,31 @@ namespace DSG.Base
                 }
                 return HandleError(sC, sM, ex, OnDestroyError);
             }
-            finally
-            {
-                if (bLock)
-                {
-                    semaphore.Release();
-                }
-            }
-
         }
 
-        public async Task<Result> DestroyAsync() => await DestroyAsync(true);
+
+        /// <summary>
+        /// Deallocate resources, using the Lock<br/>
+        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
+        /// </summary
+        /// <returns>operation result</returns>
+        public async Task<Result> DestroyAsync()
+        {
+            string sM = nameof(DestroyAsync);
+            await createSemaphore.WaitAsync();
+            try
+            {
+                return await DestroyNoLockAsync();
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+            finally
+            {
+                createSemaphore.Release(); 
+            }
+        }
 
         public Result Create()
         {

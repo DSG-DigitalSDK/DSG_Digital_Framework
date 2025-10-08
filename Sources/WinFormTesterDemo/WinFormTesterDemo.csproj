@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Sharp7" Version="1.1.84" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DSG_Database\DSG_DataBase.csproj" />
     <ProjectReference Include="..\DSG_Drivers\DSG_Drivers.csproj" />
     <ProjectReference Include="..\DSG_Imaging\DSG_Imaging.csproj" />

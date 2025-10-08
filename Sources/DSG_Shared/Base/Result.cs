@@ -35,6 +35,7 @@ namespace DSG.Base
         public static Result CreateResultError(Exception ex) => CreateResultError(ex, null);
         public static Result CreateResultError() => CreateResultError( OperationResult.Error,null,0);
         public static Result CreateResultErrorUnknown() => CreateResultError( OperationResult.Error, "Unknown Error", 0, null);
+        public static Result CreateResultError(OperationResult eResult) => CreateResultError(eResult, eResult.ToString(),0);
 
         public static Result CreateResultSuccess(object? oTag ) => new Result()
         {

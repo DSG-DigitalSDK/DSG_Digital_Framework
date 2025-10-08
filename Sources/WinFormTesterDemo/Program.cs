@@ -15,7 +15,7 @@ namespace WinFormTesterDemo
         {
             string sM = nameof(SerialTest);
 
-            SerialPort oSer1 = new DSG.Drivers.SerialPort.SerialPort()
+            SerialHandler oSer1 = new DSG.Drivers.SerialPort.SerialHandler()
             {
                 Name = "Serial1",
                 ConnectionName = "SerialTest",
@@ -28,7 +28,7 @@ namespace WinFormTesterDemo
                 EnableWriter = true,
                 DataMode = DSG.Base.StreamMode.Text
             };
-            SerialPort oSer2 = new DSG.Drivers.SerialPort.SerialPort()
+            SerialHandler oSer2 = new DSG.Drivers.SerialPort.SerialHandler()
             {
                 Name = "Serial2",
                 ConnectionName = "SerialTest",
@@ -108,29 +108,39 @@ namespace WinFormTesterDemo
                     ReadTimeoutMs = 1000,
                     EnableReader = false,
                     EnableWriter = false,
+                    SleepRandomMaxMs = 10000,
+                    SleepMs = 2000,
                 });
             }
 
             //foreach ( var o in oList) 
-            Parallel.ForEach(oList, async o =>
+            Task.Run(() => Parallel.ForEach(oList, async o =>
             {
                 await o.CreateAsync();
                 await o.ConnectAsync();
-            });
+            }));
 
-            for (int i = 0; i < iLoop; i++)
+            Task.Run(() => Parallel.ForEach(oList, async o =>
             {
-                //foreach (var o in oList)
-                Parallel.ForEach(oList, async o =>
-                {
-                    await o.ReadDataAsync();
-                });
-                Parallel.ForEach(oList, async o =>
-                {
-                    await o.WriteDataAsync($"{o.Name} : {i + 1}");
-                });
-            }
+                await o.DestroyAsync();
+            }));
 
+            Task.Run(() =>
+            {
+
+                for (int i = 0; i < iLoop; i++)
+                {
+                    //foreach (var o in oList)
+                    Parallel.ForEach(oList, async o =>
+                    {
+                        await o.ReadDataAsync();
+                    });
+                    Parallel.ForEach(oList, async o =>
+                    {
+                        await o.WriteDataAsync($"{o.Name} : {i + 1}");
+                    });
+                }
+            });
         }
 
 
@@ -150,8 +160,17 @@ namespace WinFormTesterDemo
             LogMan.CreateAndRegisterDefaultLoggers(true, true, false);
             LogMan.Create();
 
-           // ConnectionTest(5, 5);
-            SerialTest();
+            //            ConnectionTest(1, 1000);
+            // SerialTest();
+            var oPlcItem = DSG.Drivers.Siemens.S7PlcDataItem.Create(DSG.Drivers.Siemens.S7PlcArea.DB, 50, 30, 100);
+            for (int i = 0; i < 100; i++)
+                oPlcItem.Data[i] = (byte)(i + 1);
+
+            var s7 = DSG.Drivers.Siemens.S7DataConversion.ToS7DataItem(oPlcItem);
+            GC.Collect();
+            GC.Collect();
+
+            var oItemBack = DSG.Drivers.Siemens.S7DataConversion.ToPlcDataItem(s7.Value);
 
             Application.Run(new Form1());
             LogMan.Destroy();

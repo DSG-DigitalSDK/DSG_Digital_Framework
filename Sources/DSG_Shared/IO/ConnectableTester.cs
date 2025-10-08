@@ -25,7 +25,7 @@ namespace DSG.IO
         }
         void SimException(string sMethod)
         {
-            if (oRand.NextDouble() < 2.5 / 10)
+            if (oRand.NextDouble() < 1 / 100)
             {
                 LogMan.Error(sC, sMethod, $"{Name} : Raising exception");
                 throw new ArgumentException($"{Name}: Simulated Exception");
