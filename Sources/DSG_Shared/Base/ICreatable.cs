@@ -42,11 +42,11 @@ namespace DSG.Base
 
         string Name { get; }
 
-        event EventHandler? OnCreating;
-        event EventHandler<ResultEventArgs>? OnCreate;
-        event EventHandler<ResultEventArgs>? OnCreateError;
-        event EventHandler? OnDestroying;
-        event EventHandler<ResultEventArgs>? OnDestroy;
-        event EventHandler<ResultEventArgs>? OnDestroyError;
+        event EventHandler? Creating;
+        event EventHandler<ResultEventArgs>? Created;
+        event EventHandler<ResultEventArgs>? CreateError;
+        event EventHandler? Destroying;
+        event EventHandler<ResultEventArgs>? Destroyed;
+        event EventHandler<ResultEventArgs>? DestroyError;
     }
 }

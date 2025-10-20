@@ -4,6 +4,7 @@ using DSG.Drivers.Siemens;
 using DSG.Imaging;
 using DSG.IO;
 using DSG.Log;
+using DSG.ProducerConsumer;
 using DSG.Threading;
 
 
@@ -43,7 +44,7 @@ namespace WinFormTesterDemo
                 EnableWriter = true,
                 DataMode = DSG.Base.StreamMode.Text
             };
-            oSer1.OnRead += ((s, e) =>
+            oSer1.DataReaded += ((s, e) =>
             {
                 LogMan.Message(sC, sM, $"{oSer1.Name} : Data Readed");
                 var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
@@ -52,7 +53,7 @@ namespace WinFormTesterDemo
                 if (oObj?.Tag is String oS) sMsg = oS;
                 LogMan.Message(sC, sM, $"{oSer1.Name} : Readed : {sMsg}");
             });
-            oSer2.OnRead += ((s, e) =>
+            oSer2.DataReaded += ((s, e) =>
             {
                 LogMan.Message(sC, sM, $"{oSer2.Name} : Data Readed");
                 var oObj = e.ResultList.FirstOrDefault(X => X.Tag != null);
@@ -61,11 +62,11 @@ namespace WinFormTesterDemo
                 if (oObj?.Tag is String oS) sMsg = oS;
                 LogMan.Message(sC, sM, $"{oSer2.Name} : Readed : {sMsg}");
             });
-            oSer1.OnWrite += ((s, e) =>
+            oSer1.DataWritten += ((s, e) =>
             {
                 LogMan.Message(sC, sM, $"{oSer1.Name} : Data Written");
             });
-            oSer2.OnWrite += ((s, e) =>
+            oSer2.DataWritten += ((s, e) =>
             {
                 LogMan.Message(sC, sM, $"{oSer2.Name} : Data Written");
             });
@@ -135,6 +136,22 @@ namespace WinFormTesterDemo
             });
         }
 
+        static void ProducerConsumerTest(int iQueueSize, int iMaxParallelism )
+        {
+            ProducerConsumerTester oTester = new()
+            {
+                MaxConsumerParallelism = iMaxParallelism,
+                MaxProductionQueueSize = iQueueSize
+            };
+            Task.Run(() =>
+            {
+                oTester.Create();
+                for( int i = 0; i < 100; i++ )
+                {
+                    oTester.Produce();
+                }
+            });
+        }
 
         static void ConnectionTest( int iObjects, int iLoop)
         {
@@ -235,6 +252,8 @@ namespace WinFormTesterDemo
             //GC.Collect();
 
             //var oItemBack = DSG.Drivers.Siemens.S7DataConversion.ToPlcDataItem(s7.Value);
+
+            ProducerConsumerTest(50,5);
 
             Application.Run(new Form1());
             LogMan.Destroy();

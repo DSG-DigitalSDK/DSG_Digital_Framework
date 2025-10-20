@@ -41,6 +41,8 @@ namespace DSG.Threading
 
         private CancellationTokenSource oCts = new();
 
+        private readonly SemaphoreSlim _evtLock = new(1, 1); // inizializzato a 1, blocca l’accesso concorrente
+
         private int iWakeupTimeMs = 1000;
 
         /// <summary>
@@ -234,7 +236,18 @@ namespace DSG.Threading
                 if (AllowEventOverlap)
                     _ = Task.Run(() => evt.Invoke(this, args)).ContinueWith(LogUnhandledTaskException);
                 else
-                    await evt.Invoke(this, args);
+                {
+                    // Esecuzione bloccante: un task per volta
+                    await _evtLock.WaitAsync();
+                    try
+                    {
+                        await evt.Invoke(this, args);
+                    }
+                    finally
+                    {
+                        _evtLock.Release();
+                    }
+                }
             }
             catch (Exception ex)
             {

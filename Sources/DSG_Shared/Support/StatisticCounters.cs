@@ -13,8 +13,6 @@ namespace DSG.Shared
         static string sC = nameof(StatisticCounters);
 
         SpinLock oLocker = new SpinLock();
-
-        TimeElapser oTE = new TimeElapser();
         public long EventTotal { get; private set; } = 0;
         public long EventCounter { get; private set; } = 0;
         public long EventValid { get; private set; } = 0;
@@ -23,10 +21,9 @@ namespace DSG.Shared
         public long EventDropped { get; private set; } = 0;
         public Statistics TimeStatistics { get; private set; } = new Statistics();
 
-        public void TimeStart() => oTE.Reset();
-        public void AddStatisticTime() => TimeStatistics.AddValue( oTE.Stop().TotalMilliseconds );
+        public TimeElapser TimeStart() => new TimeElapser();
+        public void AddStatisticTime(TimeElapser oTE) => TimeStatistics.AddValue( oTE.Stop().TotalMilliseconds );
 
-       // public void ResetStatistics() => TimeStatistics.ResetCounters();
         public void ResetCounters()
         {
             string sM = nameof(ResetCounters);   

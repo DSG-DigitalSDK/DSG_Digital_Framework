@@ -17,19 +17,19 @@ namespace DSG.IO
         int ReadTimeoutMs { get; }
         int WriteTimeoutMs { get; }
 
-        event EventHandler? OnConnecting;
-        event EventHandler<ResultEventArgs>? OnConnect;
-        event EventHandler<ResultEventArgs>? OnConnectError;
-        event EventHandler? OnDisconnecting;
-        event EventHandler<ResultEventArgs>? OnDisconnect;
-        event EventHandler<ResultEventArgs>? OnDisconnectError;
+        event EventHandler? Connecting;
+        event EventHandler<ResultEventArgs>? Connection;
+        event EventHandler<ResultEventArgs>? ConnectionError;
+        event EventHandler? Disconnecting;
+        event EventHandler<ResultEventArgs>? Disconnected;
+        event EventHandler<ResultEventArgs>? DisconnectError;
 
-        event EventHandler? OnReading;
-        event EventHandler<ResultEventArgs>? OnRead;
-        event EventHandler<ResultEventArgs>? OnReadError;
-        event EventHandler? OnWriting;
-        event EventHandler<ResultEventArgs>? OnWrite;
-        event EventHandler<ResultEventArgs>? OnWriteError;
+        event EventHandler? DataReading;
+        event EventHandler<ResultEventArgs>? DataReaded;
+        event EventHandler<ResultEventArgs>? DataReadError;
+        event EventHandler? DataWriting;
+        event EventHandler<ResultEventArgs>? DataWritten;
+        event EventHandler<ResultEventArgs>? DataWriteError;
 
         Task<Result> ConnectAsync();
         Result Connect();

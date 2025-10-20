@@ -37,7 +37,7 @@ namespace DSG.Shared
         /// <summary>
         /// Queue empty flag
         /// </summary>
-        public bool QueueEmpty => oQueueData != null ? false : oQueueData?.Count == 0;
+        public bool QueueEmpty => oQueueData?.IsEmpty ?? false;
 
         /// <summary>
         /// Elements in queue
@@ -119,12 +119,9 @@ namespace DSG.Shared
                 LogMan.Error(sC, sM, $"NULL queue");
                 return false;
             }
-            if (oQueueData.Count >= MaxQueueSize)
+            if (QueueFull)
             {
                 OnQueueFull?.Invoke(this, EventArgs.Empty);
-            }
-            if (oQueueData.Count > MaxQueueSize)
-            {
                 LogMan.Error(sC, sM, $"Queue FULL");
                 return false;
             }
@@ -137,7 +134,7 @@ namespace DSG.Shared
         /// </summary>
         public void Clear()
         {
-            oQueueData.Clear();
+            oQueueData = new ConcurrentQueue<T>();
         }
 
     }

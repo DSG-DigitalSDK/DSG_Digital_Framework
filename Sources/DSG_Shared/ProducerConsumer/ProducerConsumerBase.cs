@@ -1,68 +1,78 @@
 ﻿using DSG.Base;
 using DSG.Log;
 using DSG.Shared;
+using DSG.Threading;
+using Microsoft.AspNetCore.Http;
+using NLog.LayoutRenderers.Wrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DSG.Threading;
 using Result = DSG.Base.Result;
-using NLog.LayoutRenderers.Wrappers;
 
 namespace DSG.ProducerConsumer
 {
 
-    public abstract class ProducerConumerBase<T> : CreateBase where T : class
+    public abstract class ProducerConumerBase<T> : CreateBase, IProducerConsumer<T> where T : class
     {
         static string sC = nameof(ProducerConumerBase<T>);
 
-        public event EventHandler? OnProducing;
-        public event EventHandler<ResultEventArgs>? OnProduce;
-        public event EventHandler<ResultEventArgs>? OnProduced;
-        public event EventHandler<ResultEventArgs>? OnProduceError;
-        public event EventHandler? OnConsuming;
-        public event EventHandler<ResultEventArgs>? OnConsume;
-        public event EventHandler<ResultEventArgs>? OnConsumed;
-        public event EventHandler<ResultEventArgs>? OnConsumeError;
+        #region Support Classes
+        public class ProducerConsumerDataContainer<T> where T : class
+        {
+            public DateTime Timestamp { get; init; } = DateTime.Now;
+            public required T Data { get; set; }
+            public required Result ProductionResult { get; set; }
+        }
+
+        #endregion
+
+        #region Events
+
+        public event EventHandler Producing;
+        public event EventHandler<ResultEventArgs> Produced;
+        public event EventHandler<ResultEventArgs> ProduceDrop;
+        public event EventHandler<ResultEventArgs> ProduceError;
+        public event EventHandler Consuming;
+        public event EventHandler<ResultEventArgs> Consumed;
+        public event EventHandler<ResultEventArgs> ConsumeDrop;
+        public event EventHandler<ResultEventArgs> ConsumeError;
+
+
+        #endregion
+
+        #region Fields
 
         int iSize = 0;
 
-        public abstract Result ReshapeImpl(int iNewSize);
-        public abstract Result ProduceDataImpl();
-        public abstract Result ConsumeDataImpl();
+        StatisticCounters oProducerCounter = new();
 
-        StatisticCounters oProducerCounter = new StatisticCounters();
-        StatisticCounters oConsumerCounter = new StatisticCounters();
-        QueueHandler<T> oProducerQueue = new QueueHandler<T>();  
-       
-        public int MaxProductionSize
+        StatisticCounters oConsumerCounter = new();
+
+        QueueHandler<ProducerConsumerDataContainer<T>> oProducerQueue = new();
+
+
+        public int MaxProductionQueueSize
         {
-            get=>iSize;
-            set
-            {
-                if (iSize != value)
-                {
-                    ReshapeImpl(iSize);
-                }
-            }
+            get => oProducerQueue.MaxQueueSize;
+            set => oProducerQueue.MaxQueueSize = value;
         }
+        public int ProductionCount { get; }
 
-        public abstract int ProductionCount { get; }
-
-        public int MaxParallelism { get; set; } = 1;
-
-        public Result Reshape(int iNewSize)
-        {
-            var res = ReshapeImpl(iNewSize);
-            if (res.Valid)
-            {
-                iSize = iNewSize;
-            }
-            return res; 
-        }
+        public int MaxConsumerParallelism { get; set; } = 1;
 
         ThreadBase oConsumerThread = new ThreadBase();
+
+        #endregion
+
+        #region Abstract/Virtual Methods
+       // protected abstract Result ReshapeImpl(int iNewSize);
+        protected abstract Result ProduceDataImpl();
+        protected abstract Result ConsumeDataImpl(ProducerConsumerDataContainer<T> oDataProduced);
+
+        #endregion
+
 
         public ProducerConumerBase()
         {
@@ -70,7 +80,6 @@ namespace DSG.ProducerConsumer
             OnCreateImplementationAsync  += ProducerConumerBase_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += ProducerConumerBase_OnDestroyImplementationAsync;
         }
-
 
         private async Task ProducerConumerBase_OnCreateImplementationAsync(object? sender, ResultEventArgs e)
         {
@@ -80,6 +89,7 @@ namespace DSG.ProducerConsumer
                 oConsumerThread.Name = $"{Name}.ConsumerThread";
                 oConsumerThread.WakeupTimeMs = 0;
                 oConsumerThread.OnThreadTriggerAsync += ConsumerTaskAsync;
+                oConsumerThread.AllowEventOverlap = false;
                 e.AddResult(oConsumerThread.Create());
             });
         }
@@ -92,6 +102,54 @@ namespace DSG.ProducerConsumer
                 e.AddResult(res);
             });
         }
+        
+
+        public Result Consume()
+        {
+            string sM = nameof(Consume);    
+            try
+            {
+                var oQueueItem = oProducerQueue.Dequeue();
+                if (oQueueItem != null)
+                {
+                    Consuming?.Invoke(this, EventArgs.Empty);
+                    var oTE = oConsumerCounter.TimeStart();
+                    var oConsumeRes = ConsumeDataImpl(oQueueItem);
+                    var oArgs = ResultEventArgs.CreateEventArgs(oConsumeRes, null);
+                    oArgs.Timestamp = oQueueItem.Timestamp;
+                    if (oConsumeRes.Valid)
+                    {
+                        LogMan.Trace(sC, sM, $"{Name} : Data Consumed");
+                        Consumed?.Invoke(this, oArgs);
+                        oConsumerCounter.AddStatisticTime(oTE);
+                        oConsumerCounter.AddValidEvent();
+                    }
+                    else
+                    {
+                        LogMan.Error(sC, sM, $"{Name} : Data Consume Error : {oConsumeRes.ErrorMessage}");
+                        ConsumeError?.Invoke(this, oArgs);
+                        oConsumerCounter.AddErrorEvent();
+                    }
+                    return oConsumeRes;
+                }
+                return Result.CreateResultError(OperationResult.ErrorQueueEmpty, "Producer Consumer Queue Empty",0);
+            }
+            catch (OperationCanceledException canc)
+            {
+                oConsumerCounter.AddDropEvent();
+                LogMan.Trace(sC, sM, $"{Name} : Data Dropped");
+                return Result.CreateResultError(canc);
+            }
+            catch (Exception ex)
+            {
+                LogMan.Exception(sC, sM, ex);
+                oConsumerCounter.AddErrorEvent();
+                ConsumeError?.Invoke(this, ResultEventArgs.CreateEventArgs(Result.CreateResultError(ex), null));
+                return Result.CreateResultError(ex);
+            }
+        }
+
+
 
 
         async Task ConsumerTaskAsync(object? sender, ThreadEventArgs e)
@@ -101,82 +159,83 @@ namespace DSG.ProducerConsumer
                 string sM = nameof(ConsumerTaskAsync);
                 try
                 {
-                    int iPar = Math.Max(1, MaxParallelism);
+                    int iPar = Math.Max(1, MaxConsumerParallelism);
                     while (!oProducerQueue.QueueEmpty)
                     {
                         e.CancellationTokenSource?.Token.ThrowIfCancellationRequested();
                         Parallel.For(0, iPar, X =>
                         {
-                            try
-                            {
-                                OnConsuming?.Invoke(this, EventArgs.Empty);
-                                var oT = oProducerQueue.Dequeue();
-                                if (oT != null)
-                                {
-                                    LogMan.Trace(sC, sM, $"{Name} : Data Consumed");
-                                    oConsumerCounter.TimeStart();
-                                    OnConsume?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
-                                    oConsumerCounter.AddStatisticTime();
-                                    oConsumerCounter.AddValidEvent();
-                                }
-                            }
-                            catch (OperationCanceledException canc)
-                            {
-                                LogMan.Trace(sC, sM, $"{Name} : Data Dropped");
-                                oConsumerCounter.AddDropEvent();
-                            }
-                            catch (Exception ex)
-                            {
-                                LogMan.Exception(sC, sM, ex);
-                                oConsumerCounter.AddErrorEvent();
-                                OnConsumeError?.Invoke(this, new ResultEventArgs { CancellationTokenSource = e.CancellationTokenSource });
-                            }
+                            Consume();
                         });
                     }
                 }
                 catch (Exception ex)
                 {
                     oConsumerCounter.AddErrorEvent();
-                    HandleError(sM, sM, ex, OnConsumeError);
+                    HandleError(sM, sM, ex, ConsumeError);
                 }
+                //          });
             });
         }
 
 
-        public Result ProduceData()
+        public Result Produce()
         {
-            string sM = nameof(ProduceData);
+            string sM = nameof(Produce);
             try
             {
                 LogMan.Trace(sC, sM, $"{Name} : Producing Data");
-                if (MaxProductionSize > 0)
+                if (MaxProductionQueueSize > 0)
                 {
-                    if (ProductionCount > MaxProductionSize)
+                    if (ProductionCount > MaxProductionQueueSize)
                     {
                         LogMan.Error(sC, sM, $"{Name} : Production Overflow");
                         var oArgs = ResultEventArgs.CreateEventArgs(Result.CreateResultError(OperationResult.ErrorDropData, "Drop data due to Overflow", 0));
-                        OnProduceError?.Invoke(this, oArgs);
+                        ProduceError?.Invoke(this, oArgs);
                         return oArgs.ResultError;
                     }
                 }
-                OnProducing?.Invoke(this, EventArgs.Empty);
-                var res = ProduceDataImpl();
-                if (res.Valid)
+                Producing?.Invoke(this, EventArgs.Empty);
+                var oTE = oProducerCounter.TimeStart();
+                var oProduceRes = ProduceDataImpl();
+                if (oProduceRes.Valid)
                 {
+                    if (oProduceRes.Tag == null)
+                    {
+                        throw new ArgumentNullException($"{sC}:{sM} : {Name} : Tag null : Correct BUG on code");                        
+                    }
+                    if (oProduceRes.Tag is T item)
+                    {
+                        oProducerQueue.Enqueue(new ProducerConsumerDataContainer<T>()
+                        {
+                            Data = item,
+                            ProductionResult = oProduceRes,
+                        });
+                        oConsumerThread.ThreadSignal();
+                    }
+                    else
+                    {
+                        throw new ArgumentNullException($"{sC}:{sM} : {Name} : Tag object not recognized : Correct BUG on code");
+                    }
+                    oProducerCounter.AddStatisticTime(oTE);
+                    oProducerCounter.AddValidEvent();
                     LogMan.Trace(sC, sM, $"{Name} : Data Produced");
-                    OnProduce?.Invoke(this, ResultEventArgs.CreateEventArgs(res));
+                    Produced?.Invoke(this, ResultEventArgs.CreateEventArgs(oProduceRes));
                 }
                 else
                 {
-                    LogMan.Error(sC, sM, $"{Name} : Data Production Error : {res.ErrorMessage}");
-                    OnProduce?.Invoke(this, ResultEventArgs.CreateEventArgs(res));
+                    oProducerCounter.AddErrorEvent();
+                    LogMan.Error(sC, sM, $"{Name} : Data Production Error : {oProduceRes.ErrorMessage}");
+                    ProduceError?.Invoke(this, ResultEventArgs.CreateEventArgs(oProduceRes));
                 }
-                return res;
+                return oProduceRes;
             }
             catch (Exception ex)
             {
-                return HandleError(sC, sM, ex, OnProduceError);
+                oProducerCounter.AddErrorEvent();
+                return HandleError(sC, sM, ex, ProduceError);
             }
         }
+
     }
 }

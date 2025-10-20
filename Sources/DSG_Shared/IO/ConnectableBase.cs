@@ -85,20 +85,20 @@ namespace DSG.IO
         #region Events
 
         // Connection events
-        public event EventHandler? OnConnecting;
-        public event EventHandler<ResultEventArgs>? OnConnect;
-        public event EventHandler<ResultEventArgs>? OnConnectError;
-        public event EventHandler? OnDisconnecting;
-        public event EventHandler<ResultEventArgs>? OnDisconnect;
-        public event EventHandler<ResultEventArgs>? OnDisconnectError;
+        public event EventHandler? Connecting;
+        public event EventHandler<ResultEventArgs>? Connection;
+        public event EventHandler<ResultEventArgs>? ConnectionError;
+        public event EventHandler? Disconnecting;
+        public event EventHandler<ResultEventArgs>? Disconnected;
+        public event EventHandler<ResultEventArgs>? DisconnectError;
 
         // Read/Write events
-        public event EventHandler? OnReading;
-        public event EventHandler<ResultEventArgs>? OnRead;
-        public event EventHandler<ResultEventArgs>? OnReadError;
-        public event EventHandler? OnWriting;
-        public event EventHandler<ResultEventArgs>? OnWrite;
-        public event EventHandler<ResultEventArgs>? OnWriteError;
+        public event EventHandler? DataReading;
+        public event EventHandler<ResultEventArgs>? DataReaded;
+        public event EventHandler<ResultEventArgs>? DataReadError;
+        public event EventHandler? DataWriting;
+        public event EventHandler<ResultEventArgs>? DataWritten;
+        public event EventHandler<ResultEventArgs>? DataWriteError;
 
         // Async implementation events for connection/disconnection
         public event Func<object, ResultEventArgs, Task>? OnConnectImplementationAsync;
@@ -178,33 +178,33 @@ namespace DSG.IO
                 }
 
                 // Raise connecting event
-                OnConnecting?.Invoke(this, EventArgs.Empty);
+                Connecting?.Invoke(this, EventArgs.Empty);
                 LogMan.Trace(sC, sM, $"Connecting to '{ObjectID}'");
 
                 var oArgs = new ResultEventArgs();
                 if (OnConnectImplementationAsync != null)
                     await OnConnectImplementationAsync.Invoke(this, oArgs);
                 else
-                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, OnConnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, ConnectionError);
 
                 if (oArgs.Valid)
                 {
                     LogMan.Message(sC, sM, $"{ObjectID} Connected");
                     Connected = true;
-                    OnConnect?.Invoke(this, oArgs);
+                    Connection?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
                 }
                 else
                 {
                     LogMan.Error(sC, sM, $"Error Connecting to {ObjectID} : {oArgs.ResultError.ErrorMessage}");
                     Connected = false;
-                    OnConnectError?.Invoke(this, oArgs);
+                    ConnectionError?.Invoke(this, oArgs);
                     return oArgs.ResultError;
                 }
             }
             catch (Exception ex)
             {
-                return HandleError(sC, sM, ex, OnConnectError);
+                return HandleError(sC, sM, ex, ConnectionError);
             }
             finally
             {
@@ -241,12 +241,12 @@ namespace DSG.IO
                 var wasConnected = Connected;
                 if (wasConnected)
                 {
-                    OnDisconnecting?.Invoke(this, EventArgs.Empty);
+                    Disconnecting?.Invoke(this, EventArgs.Empty);
                 }
 
                 if (OnDisconnectImplementationAsync == null)
                 {
-                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, OnDisconnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, DisconnectError);
                 }
 
                 LogMan.Trace(sC, sM, $"Disconnecting from {ObjectID}");
@@ -257,19 +257,19 @@ namespace DSG.IO
                 {
                     LogMan.Message(sC, sM, $"{ObjectID} Disconnected");
                     Connected = false;
-                    if (wasConnected) OnDisconnect?.Invoke(this, oArgs);
+                    if (wasConnected) Disconnected?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
                 }
                 else
                 {
-                    if (wasConnected) OnDisconnectError?.Invoke(this, oArgs);
+                    if (wasConnected) DisconnectError?.Invoke(this, oArgs);
                 }
 
                 return oArgs.ResultError;
             }
             catch (Exception ex)
             {
-                return HandleError(sC, sM, ex, OnDisconnectError);
+                return HandleError(sC, sM, ex, DisconnectError);
             }
             finally
             {
@@ -327,11 +327,11 @@ namespace DSG.IO
         /// <param name="oEventOk">Success event handler</param>
         /// <param name="oEventError">Error event handler</param>
         /// <returns>Same operation result for chaining</returns>
-        Result ManageResult(string sMethod, Result oRes, StatisticCounters oCounters, EventHandler<ResultEventArgs>? oEventOk, EventHandler<ResultEventArgs>? oEventError)
+        Result ManageResult(string sMethod, Result oRes,TimeElapser oTStart, StatisticCounters oCounters, EventHandler<ResultEventArgs>? oEventOk, EventHandler<ResultEventArgs>? oEventError)
         {
             if (oRes.Valid)
             {
-                oCounters.AddStatisticTime();
+                oCounters.AddStatisticTime(oTStart);
                 oCounters.AddValidEvent();
                 LogMan.Trace(sC, sMethod, $"{ObjectID} : Operation Successful");
                 oEventOk?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
@@ -368,19 +368,19 @@ namespace DSG.IO
             try
             {
                 LogMan.Trace(sC, sM, $"{ObjectID} : Reading Data");
-                OnReading?.Invoke(this, EventArgs.Empty);
+                DataReading?.Invoke(this, EventArgs.Empty);
 
-                Result oRes = await CheckConnection(sM, OnReadError);
+                Result oRes = await CheckConnection(sM, DataReadError);
                 if (oRes.HasError) return oRes;
 
-                ReadCounters.TimeStart();
+                var oTS = ReadCounters.TimeStart();
                 oRes = await ReadImplementationAsync();
 
-                return ManageResult(sM, oRes, ReadCounters, OnRead, OnReadError);
+                return ManageResult(sM, oRes, oTS, ReadCounters, DataReaded, DataReadError);
             }
             catch (Exception ex)
             {
-                return HandleError(sC, sM, ex, OnReadError);
+                return HandleError(sC, sM, ex, DataReadError);
             }
             finally
             {
@@ -415,21 +415,21 @@ namespace DSG.IO
             await oWriteSemaphore.WaitAsync();
             try
             {
-                Result oRes = await CheckConnection(sM, OnWriteError);
+                Result oRes = await CheckConnection(sM, DataWriteError);
                 if (oRes.HasError) return oRes;
 
                 LogMan.Trace(sC, sM, $"{ObjectID} : Writing Data");
-                OnWriting?.Invoke(this, EventArgs.Empty);
+                DataWriting?.Invoke(this, EventArgs.Empty);
 
-                WriteCounters.TimeStart();
+                var oTS = WriteCounters.TimeStart();
                 oRes = await WriteImplementationAsync(oObj);
 
-                return ManageResult(sM, oRes, WriteCounters, OnWrite, OnWriteError);
+                return ManageResult(sM, oRes, oTS, WriteCounters, DataWritten, DataWriteError);
             }
             catch (Exception ex)
             {
                 WriteCounters.AddErrorEvent();
-                return HandleError(sC, sM, ex, OnWriteError);
+                return HandleError(sC, sM, ex, DataWriteError);
             }
             finally
             {

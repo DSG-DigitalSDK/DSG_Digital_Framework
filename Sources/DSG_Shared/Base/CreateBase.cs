@@ -24,12 +24,12 @@ namespace DSG.Base
 
         readonly SemaphoreSlim createSemaphore= new SemaphoreSlim(1,1);   
 
-        public event EventHandler? OnCreating;
-        public event EventHandler<ResultEventArgs>? OnCreate;
-        public event EventHandler<ResultEventArgs>? OnCreateError;
-        public event EventHandler? OnDestroying;
-        public event EventHandler<ResultEventArgs>? OnDestroy;
-        public event EventHandler<ResultEventArgs>? OnDestroyError;
+        public event EventHandler? Creating;
+        public event EventHandler<ResultEventArgs>? Created;
+        public event EventHandler<ResultEventArgs>? CreateError;
+        public event EventHandler? Destroying;
+        public event EventHandler<ResultEventArgs>? Destroyed;
+        public event EventHandler<ResultEventArgs>? DestroyError;
 
         //- DEPRECATED -
         //public event EventHandler<ResultEventArgs>? OnCreateImplementation;
@@ -96,7 +96,7 @@ namespace DSG.Base
                     return Result.CreateResultSuccess();
                 }
                 LogMan.Trace(sC, sM, $"Creating '{Name}'");
-                OnCreating?.Invoke(this, EventArgs.Empty);
+                Creating?.Invoke(this, EventArgs.Empty);
                 var oArgs = new ResultEventArgs();
 
                 if (OnCreateImplementationAsync != null)
@@ -105,18 +105,18 @@ namespace DSG.Base
                 //    OnCreateImplementation(this, oArgs);
                 //if(OnCreateImplementationAsync == null && OnCreateImplementation == null )
                 else
-                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Create implementation registered", 0, null, OnCreateError);
+                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Create implementation registered", 0, null, CreateError);
  
                 Initialized = oArgs.Valid;
                 if (Initialized)
                 {
                     LogMan.Trace(sC, sM, $"'{Name}' created");
-                    OnCreate?.Invoke(this, oArgs);
+                    Created?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
                 }
                 else
                 {
-                    return HandleError(sC, sM, oArgs, OnCreateError);
+                    return HandleError(sC, sM, oArgs, CreateError);
                 }
             }
             catch (Exception ex)
@@ -134,7 +134,7 @@ namespace DSG.Base
                 {
                     throw;
                 }
-                return HandleError(sC, sM, ex, OnCreateError);
+                return HandleError(sC, sM, ex, CreateError);
             }
             finally
             {
@@ -155,7 +155,7 @@ namespace DSG.Base
                 LogMan.Trace(sC, sM, $"Destroying '{Name}'");
                 if (Initialized)
                 {
-                    OnDestroying?.Invoke(this, EventArgs.Empty);
+                    Destroying?.Invoke(this, EventArgs.Empty);
                 }
                 var oArgs = new ResultEventArgs();
                 if (OnDestroyImplementationAsync != null)
@@ -164,13 +164,13 @@ namespace DSG.Base
                 //    OnDestroyImplementation(this, oArgs);
                 //if (OnDestroyImplementationAsync == null && OnDestroyImplementation == null)
                 else
-                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Destroy implementation registered", 0, null, OnDestroyError);
+                    return HandleError(sC, sM, OperationResult.ErrorResource, $"{Name}: No Destroy implementation registered", 0, null, DestroyError);
                 if (oArgs.Valid)
                 {
                     LogMan.Trace(sC, sM, $"'{Name}' destroyed");
                     if (Initialized)
                     {
-                        OnDestroy?.Invoke(this, oArgs);
+                        Destroyed?.Invoke(this, oArgs);
                     }
                     Initialized = false;
                     return Result.CreateResultSuccess();
@@ -179,7 +179,7 @@ namespace DSG.Base
                 {
                     if (Initialized)
                     {
-                        return HandleError(sC, sM, oArgs, OnDestroyError);
+                        return HandleError(sC, sM, oArgs, DestroyError);
                     }
                     return oArgs.ResultError;
                 }
@@ -191,7 +191,7 @@ namespace DSG.Base
                 {
                     throw;
                 }
-                return HandleError(sC, sM, ex, OnDestroyError);
+                return HandleError(sC, sM, ex, DestroyError);
             }
         }
 

@@ -11,20 +11,20 @@ namespace DSG.ProducerConsumer
 {
     public interface IProducerConsumer<T> where T : class
     {
-        Result ProduceData();
-        Result ConsumeData();
+        Result Produce();
+        Result Consume();
 
-        int MaxProductionSize { get; set; }
-        int MaxParallelism { get; set; }
+        int MaxProductionQueueSize { get; set; }
+        int MaxConsumerParallelism { get; set; }
 
-        public event EventHandler<ProducerConsumerEventArgs<T>> OnProducing;
-        public event EventHandler<ResultEventArgs> OnProduce;
-        public event EventHandler<ResultEventArgs> OnProduceDrop;
-        public event EventHandler<ResultEventArgs> OnProduceError;
-        public event EventHandler OnConsuming;
-        public event EventHandler<ResultEventArgs> OnConsume;
-        public event EventHandler<ResultEventArgs> OnConsumeDrop;
-        public event EventHandler<ResultEventArgs> OnConsumeError;
+        public event EventHandler Producing;
+        public event EventHandler<ResultEventArgs> Produced;
+        public event EventHandler<ResultEventArgs> ProduceDrop;
+        public event EventHandler<ResultEventArgs> ProduceError;
+        public event EventHandler Consuming;
+        public event EventHandler<ResultEventArgs> Consumed;
+        public event EventHandler<ResultEventArgs> ConsumeDrop;
+        public event EventHandler<ResultEventArgs> ConsumeError;
 
     }
 }

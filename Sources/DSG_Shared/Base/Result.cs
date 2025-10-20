@@ -9,6 +9,7 @@ namespace DSG.Base
 {
     public class Result
     {
+        public DateTime Timestamp { get; internal set; } = DateTime.Now;
         public OperationResult OperationResult { get; set; }
         public bool Valid => OperationResult == OperationResult.Success; 
         public bool HasError => OperationResult != OperationResult.Success;
