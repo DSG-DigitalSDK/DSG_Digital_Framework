@@ -45,7 +45,7 @@ namespace DSG.IO
         /// <summary>
         /// Human-readable connection name
         /// </summary>
-        public string ConnectionName { get; set; }
+        public string ConnectionName => $"{Name}.Connection";
 
         /// <summary>
         /// Connection string containing connection parameters
@@ -388,21 +388,7 @@ namespace DSG.IO
             }
         }
 
-        /// <summary>
-        /// Synchronous wrapper for ReadDataAsync
-        /// </summary>
-        /// <returns>Result of the read operation</returns>
-        public Result ReadData()
-        {
-            try
-            {
-                return ReadDataAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                return Result.CreateResultError(ex);
-            }
-        }
+        
 
         /// <summary>
         /// Asynchronously writes data to the resource
@@ -437,21 +423,20 @@ namespace DSG.IO
             }
         }
 
-        /// <summary>
-        /// Synchronous wrapper for WriteDataAsync
-        /// </summary>
-        /// <param name="oObj">Object containing data to write</param>
-        /// <returns>Result of the write operation</returns>
-        public Result WriteData(object oObj)
+
+        public abstract Result FlushRead();
+
+        public abstract Result FlushWrite();
+
+        public Result Flush() 
         {
-            try
-            {
-                return WriteDataAsync(oObj).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                return Result.CreateResultError(ex);
-            }
+            var a = FlushRead();    
+            var b = FlushWrite();
+            if (!a.Valid)
+                return a;
+            if (!b.Valid)
+                return b;
+            return Result.CreateResultSuccess();
         }
 
         #endregion

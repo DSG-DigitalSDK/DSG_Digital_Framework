@@ -17,31 +17,21 @@ namespace DSG.Threading
     /// <item>Polling timer signal (Wakeup)</item>
     /// </list>
     /// </summary>
-    public class ThreadBase : CreateBase
+    public class ThreadBaseAsync : CreateBase
     {
-        private static readonly string sC = nameof(ThreadBase);
-
-        /// <summary>
-        /// Signal type for the thread
-        /// </summary>
-        public enum EnumSignalType
-        {
-            Unknown = 0,
-            Exception = 1,
-            Quit = 2,
-            Trigger = 3,
-            Timeout = 4,
-            TimeDrop = 5,
-        }
+        private static readonly string sC = nameof(ThreadBaseAsync);
 
         private Thread? oThread;
-        private readonly AutoResetEvent oSignalExecute = new(false);
+        private readonly AutoResetEvent oSignalTrigger = new(false);
         private readonly AutoResetEvent oSignalQuit = new(false);
         private readonly AutoResetEvent oSignalWakeupRestart = new(false);
 
         private CancellationTokenSource oCts = new();
 
-        private readonly SemaphoreSlim _evtLock = new(1, 1); // inizializzato a 1, blocca l’accesso concorrente
+        //private readonly SemaphoreSlim _evtLock = new(1, 1); // inizializzato a 1, blocca l’accesso concorrente
+
+        private readonly SemaphoreSlim _oLock = new(1, 1);
+
 
         private int iWakeupTimeMs = 1000;
 
@@ -78,19 +68,20 @@ namespace DSG.Threading
         /// <summary>
         /// Raised on external trigger
         /// </summary>
-        public event Func<object, ThreadEventArgs, Task>? OnThreadTriggerAsync;
+        public event Func<object, ThreadEventArgs, Task>? TriggerAsync;
 
         /// <summary>
         /// Raised on polling timer
         /// </summary>
-        public event Func<object, ThreadEventArgs, Task>? OnThreadWakeupAsync;
+        public event Func<object, ThreadEventArgs, Task>? WakeupAsync;
 
         /// <summary>
         /// Raised on quit signal
         /// </summary>
-        public event Func<object, ThreadEventArgs, Task>? OnThreadQuitAsync;
+        public event Func<object, ThreadEventArgs, Task>? QuitAsync;
 
-        public ThreadBase()
+
+        public ThreadBaseAsync()
         {
             OnCreateImplementationAsync += CreateThreadAsync;
             OnDestroyImplementationAsync += DestroyThreadAsync;
@@ -99,9 +90,9 @@ namespace DSG.Threading
 
         private void ThreadBase_OnDisposing(object? sender, EventArgs e)
         {
-            ThreadQuit();
+            SignalQuit();
             oCts?.Dispose();
-            oSignalExecute?.Dispose();
+            oSignalTrigger?.Dispose();
             oSignalQuit?.Dispose();
             oSignalWakeupRestart?.Dispose();
         }
@@ -109,9 +100,9 @@ namespace DSG.Threading
         public void TimerStart() => TimerEnabled = true;
         public void TimerStop() => TimerEnabled = false;
 
-        public void ThreadSignal() => oSignalExecute.Set();
+        public void SignalTrigger() => oSignalTrigger?.Set();
 
-        public void ThreadQuit()
+        public void SignalQuit()
         {
             oCts?.Cancel();
             oSignalQuit?.Set();
@@ -126,7 +117,7 @@ namespace DSG.Threading
                 LogMan.Message(sC, nameof(CreateThreadAsync), $"{Name}: Creating thread");
 
                 oCts = new CancellationTokenSource();
-                oSignalExecute.Reset();
+                oSignalTrigger.Reset();
                 oSignalQuit.Reset();
                 oSignalWakeupRestart.Reset();
 
@@ -145,18 +136,32 @@ namespace DSG.Threading
         {
             await Task.Run(() =>
             {
-                LogMan.Message(sC, nameof(DestroyThreadAsync), $"{Name}: Destroying thread");
-
-                ThreadQuit();
-
-                if (oThread != null && oThread.IsAlive)
+                if (oThread == null)
                 {
-                    if (!oThread.Join(5000))
-                        LogMan.Warning(sC, nameof(DestroyThreadAsync), $"Thread {Name} did not stop in 5s.");
+                    e.AddResult(Result.CreateResultSuccess());
                 }
+                else
+                {
+                    LogMan.Message(sC, nameof(DestroyThreadAsync), $"{Name}: Destroying thread");
 
-                oThread = null;
-                e.AddResult(Result.CreateResultSuccess());
+                    SignalQuit();
+
+                    if (oThread != null && oThread.IsAlive)
+                    {
+                        if (!oThread.Join(5000))
+                            {
+                            LogMan.Warning(sC, nameof(DestroyThreadAsync), $"Thread {Name} did not stop in 5s.");
+                        }
+                    }
+
+                    oThread = null;
+
+//                    oSignalTrigger.Reset();
+  //                  oSignalQuit.Reset();
+    //                oSignalWakeupRestart.Reset();
+
+                    e.AddResult(Result.CreateResultSuccess());
+                }
             });
         }
 
@@ -169,83 +174,89 @@ namespace DSG.Threading
             string sM = nameof(ThreadJob);
             LogMan.Message(sC, sM, $"{Name}: Thread started");
 
-            var events = new WaitHandle[] { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
+            var events = new WaitHandle[] { oSignalQuit, oSignalTrigger, oSignalWakeupRestart };
 
-            try
+                bool bExit = false;
+            while (!bExit)
             {
-                while (true)
+                try
                 {
                     if (oCts?.IsCancellationRequested == true)
+                        {
                         break;
+                    }
 
                     int waitTime = WakeupTimeMs == 0 ? Timeout.Infinite : WakeupTimeMs;
                     int index = WaitHandle.WaitAny(events, waitTime);
-
-                    if (index == 0 || oCts?.IsCancellationRequested == true)
-                        break;
-
-                    ProcessEvent(index);
+                    switch (index)
+                    {
+                        case 0:
+                            bExit = true;
+                            RaiseAsync(QuitAsync, "Quit").GetAwaiter().GetResult();
+                            break;
+                        case 1:
+                            RaiseAsync(TriggerAsync, "Trigger").GetAwaiter().GetResult();
+                            break;
+                        case 2:
+                        default:
+                            if (TimerEnabled)
+                                {
+                                if (iWakeupTimeMs > 0)
+                                {
+                                    RaiseAsync(WakeupAsync, "Wakeup").GetAwaiter().GetResult();
+                                }
+                            }
+                            break;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                LogMan.Exception(sC, sM, Name, ex);
+                catch (Exception ex)
+                {
+                    LogMan.Exception(sC, sM, Name, ex);
+                }
+
             }
 
             LogMan.Message(sC, sM, $"{Name}: Thread ended");
         }
 
 
-        private void ProcessEvent(int index)
-        {
-            try
-            {
-                switch (index)
-                {
-                    case 1:
-                        _ = RaiseAsync(OnThreadTriggerAsync, "Trigger");
-                        break;
-                    case 2:
-                        if (TimerEnabled)
-                            _ = RaiseAsync(OnThreadWakeupAsync, "Wakeup");
-                        break;
-                    default:
-                        _ = RaiseAsync(OnThreadQuitAsync, "Quit");
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogMan.Exception(sC, nameof(ProcessEvent), Name, ex);
-            }
-        }
-
-        private async Task RaiseAsync(Func<object, ThreadEventArgs, Task>? evt, string tag)
+       
+        private async Task RaiseAsync(Func<object, ThreadEventArgs, Task>? evt, string tag )
         {
             string sM = nameof(RaiseAsync);
-            if (evt == null) return;
-
+            if (evt == null)
+            {
+                return;
+            }
             try
             {
                 var args = new ThreadEventArgs
                 {
                     Thread = oThread,
-                    CancellationTokenSource = oCts
+                     CancellationToken = oCts.Token
                 };
 
                 if (AllowEventOverlap)
-                    _ = Task.Run(() => evt.Invoke(this, args)).ContinueWith(LogUnhandledTaskException);
+                {
+                    LogMan.Message(sC, sM, $"{Name} Detected {tag}");
+                    await evt.Invoke(this, args).ContinueWith(LogUnhandledTaskException);
+                    LogMan.Message(sC, sM, $"{Name} {tag} completed");
+                }
                 else
                 {
                     // Esecuzione bloccante: un task per volta
-                    await _evtLock.WaitAsync();
+                    await _oLock.WaitAsync();
+                    LogMan.Message(sC, sM, $"{Name}/{tag} Enter Lock");
                     try
                     {
+                        LogMan.Message(sC, sM, $"{Name} Detected {tag}");
                         await evt.Invoke(this, args);
+                        LogMan.Message(sC, sM, $"{Name} {tag} completed");
                     }
                     finally
                     {
-                        _evtLock.Release();
+                        LogMan.Message(sC, sM, $"{Name}/{tag} Exit Lock");
+                        _oLock.Release();
                     }
                 }
             }
@@ -259,30 +270,13 @@ namespace DSG.Threading
         {
             String sM = nameof(LogUnhandledTaskException);
             if (t.IsFaulted && t.Exception != null)
+                {
                 LogMan.Exception(sC, sM, Name, t.Exception);
+            }
         }
 
         #endregion
 
-        /// <summary>
-        /// Wait synchronously for any thread signal
-        /// </summary>
-        /// <param name="timeoutMs">Timeout in milliseconds, 0 = infinite</param>
-        /// <returns>Signal type received</returns>
-        public EnumSignalType WaitForSignal(int timeoutMs)
-        {
-            var events = new WaitHandle[] { oSignalQuit, oSignalExecute, oSignalWakeupRestart };
-            int waitTime = timeoutMs == 0 ? Timeout.Infinite : timeoutMs;
-            int index = WaitHandle.WaitAny(events, waitTime);
-
-            return index switch
-            {
-                0 => EnumSignalType.Quit,
-                1 => EnumSignalType.Trigger,
-                2 => TimerEnabled ? EnumSignalType.Timeout : EnumSignalType.TimeDrop,
-                _ => EnumSignalType.Unknown
-            };
-        }
-
+ 
     }
 }

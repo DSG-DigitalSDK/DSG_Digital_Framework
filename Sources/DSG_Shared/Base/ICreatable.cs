@@ -16,20 +16,6 @@ namespace DSG.Base
         Task<Result> CreateAsync();
 
         /// <summary>
-        /// Alloc resources <br/>
-        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
-        /// </summary
-        /// <returns>operation result</returns>        
-        Result Create();
-
-        /// <summary>
-        /// Free resources <br/>
-        /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
-        /// </summary
-        /// <returns>operation result</returns>        
-        Result Destroy();
-
-        /// <summary>
         /// Free resources <br/>
         /// Method defines a workflow. use <see cref="OnDestroyImplementation"> to implement specific object instantiation</see>
         /// </summary

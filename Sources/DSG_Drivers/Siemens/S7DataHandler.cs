@@ -39,12 +39,12 @@ namespace DSG.Drivers.Siemens
         {
             // Class Initialization
             this.Name = "Template";
-            this.ConnectionName = "Conn";
+            //this.ConnectionName = "Conn";
             this.ConnectionString = ConnectionTemplate;
             this.EnableReader = true;
             this.PollingReadMs = 1000;
-            this.EnableWriter = false;
-            this.PollingWriteMs = 50;
+         //   this.EnableWriter = false;
+          //  this.PollingWriteMs = 50;
             // Registring Events
             OnCreateImplementationAsync += Event_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += Event_OnDestroyImplementationAsync;
@@ -263,6 +263,16 @@ namespace DSG.Drivers.Siemens
                 }
                 return Result.CreateResultError(OperationResult.Error, $"cannot handle '{oWriteObj.GetType().Name}' ",0);
             });
+        }
+
+        public override Result FlushRead()
+        {
+            return Result.CreateResultSuccess();
+        }
+
+        public override Result FlushWrite()
+        {
+            return Result.CreateResultSuccess();
         }
     }
 }

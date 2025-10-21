@@ -19,6 +19,6 @@ namespace DSG.Threading
         /// <summary>
         /// Cancellation token
         /// </summary>
-        public CancellationTokenSource? CancellationTokenSource { get; internal set; }
+        public CancellationToken? CancellationToken { get; internal set; }
     }
 }

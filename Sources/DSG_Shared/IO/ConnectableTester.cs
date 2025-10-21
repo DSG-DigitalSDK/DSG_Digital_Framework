@@ -88,5 +88,15 @@ namespace DSG.IO
             await SimOperationAsync(sM);
             return Result.CreateResultSuccess("Write OK!");
         }
+
+        public override Result FlushRead()
+        {
+            return Result.CreateResultSuccess();
+        }
+
+        public override Result FlushWrite()
+        {
+            return Result.CreateResultSuccess();
+        }
     }
 }

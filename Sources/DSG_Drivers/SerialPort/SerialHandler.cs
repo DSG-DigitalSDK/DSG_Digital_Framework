@@ -18,15 +18,15 @@ namespace DSG.Drivers.SerialPort
     {
         static readonly string sC = nameof(SerialHandler);
 
-        static readonly string connectionTemplate = @"COM(COM1-COM8)\Baudrate(9600-57600)\Parity(ODD-EVEN-NONE)\DataBit(7-8)\StopBit(0-1-1.5-2)\Handshake(NONE-RTS-XON)";
+        static readonly string connectionTemplate = @"<COM(COM1-COM8)><Baudrate(9600-57600)><Parity(ODD-EVEN-NONE)><DataBit(7-8)><StopBit(0-1-1.5-2)><Handshake(NONE-RTS-XON)>";
 
-        static readonly string splitter = @"\";
+        static readonly string splitter = ",";
         
 
         protected System.IO.Ports.SerialPort oSerialPort = null;
         public System.IO.Ports.SerialPort SerialPortNative => oSerialPort;
 
-        public event EventHandler<SerialDataReceivedEventArgs> OnDataReceived;
+        public event EventHandler<SerialDataReceivedEventArgs> DataReceived;
 
         public StreamMode DataMode { get; set; } = StreamMode.Text;
 
@@ -59,7 +59,7 @@ namespace DSG.Drivers.SerialPort
                 var strArr = ConnectionString.Split(splitter, StringSplitOptions.TrimEntries).ToList();
                 if (strArr.Count != 6)
                 {
-                    LogMan.Error(sC, sMethod, $"'{Name}/{ConnectionName}' : Connection string error : '{ConnectionString}'");
+                    LogMan.Error(sC, sMethod, $"'{ConnectionName}' : Connection string error : '{ConnectionString}'");
                     e.AddResult(Result.CreateResultError(OperationResult.ErrorResource, "Connection String Error", 0));
                     return;
                 }
@@ -100,7 +100,7 @@ namespace DSG.Drivers.SerialPort
                         eStopBits = StopBits.OnePointFive;
                         break;
                     case "2":
-                        eStopBits = StopBits.OnePointFive;
+                        eStopBits = StopBits.Two;
                         break;
                     default:
                         throw new ArgumentException("Use  '1', '1.5', '2', 'NONE' ", "StopBits");
@@ -139,7 +139,7 @@ namespace DSG.Drivers.SerialPort
 
         private void OSerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            OnDataReceived?.Invoke(this, e);
+            DataReceived?.Invoke(this, e);
         }
 
 
@@ -192,7 +192,7 @@ namespace DSG.Drivers.SerialPort
                             {
                                 int iBytesToRead = oSerialPort.BytesToRead;
                                 if (iBytesToRead == 0)
-                                {
+                                {                                   
                                     Thread.Sleep(PollingReadMs);
                                 }
                                 iBytesToRead = oSerialPort.BytesToRead;
@@ -256,6 +256,36 @@ namespace DSG.Drivers.SerialPort
                     return Result.CreateResultError(OperationResult.Error, "Invalid Object Type", 0);
                 }
             });
+        }
+
+        public override Result FlushRead()
+        {
+            string sM = nameof(FlushRead);
+            try
+            {
+                oSerialPort?.DiscardInBuffer();
+                return Result.CreateResultSuccess();
+            }
+            catch (Exception e)
+            {
+                LogMan.Exception(sC, sM, e);
+                return Result.CreateResultError(OperationResult.Error, "Invalid Object Type", 0);
+            }
+        }
+
+        public override Result FlushWrite()
+        {
+            string sM = nameof(FlushWrite);
+            try
+            {
+                oSerialPort?.DiscardOutBuffer();
+                return Result.CreateResultSuccess();
+            }
+            catch (Exception e)
+            {
+                LogMan.Exception(sC, sM, e);
+                return Result.CreateResultError(OperationResult.Error, "Invalid Object Type", 0);
+            }
         }
     }
 }

@@ -39,7 +39,7 @@ namespace DSG.Base
 
         protected override void Dispose(bool disposing)
         {
-            Destroy();
+            Task.Run(async ()=>await DestroyNoLockAsync());
             base.Dispose(disposing);
         }
 
@@ -216,39 +216,6 @@ namespace DSG.Base
             finally
             {
                 createSemaphore.Release(); 
-            }
-        }
-
-        public Result Create()
-        {
-            string sM = nameof(Create);
-            try
-            {
-                return CreateAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                if (ThrowExceptions)
-                {
-                    throw;
-                }
-                return HandleError(sC, sM, ex, null);
-            }
-        }
-        public Result Destroy()
-        {
-            string sM = nameof(Destroy);
-            try
-            {
-                return DestroyAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                if (ThrowExceptions)
-                {
-                    throw;
-                }
-                return HandleError(sC, sM, ex, null);
             }
         }
     }

@@ -62,7 +62,7 @@ namespace DSG.ProducerConsumer
 
         public int MaxConsumerParallelism { get; set; } = 1;
 
-        ThreadBase oConsumerThread = new ThreadBase();
+        ThreadBaseSimple oConsumerThread = new();
 
         #endregion
 
@@ -76,31 +76,31 @@ namespace DSG.ProducerConsumer
 
         public ProducerConumerBase()
         {
-            oConsumerThread.OnThreadTriggerAsync += ConsumerTaskAsync;
+            oConsumerThread.Trigger += ConsumerTask;
             OnCreateImplementationAsync  += ProducerConumerBase_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += ProducerConumerBase_OnDestroyImplementationAsync;
         }
 
         private async Task ProducerConumerBase_OnCreateImplementationAsync(object? sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
-            {
-                string sM = nameof(ProducerConumerBase_OnCreateImplementationAsync);
-                oConsumerThread.Name = $"{Name}.ConsumerThread";
-                oConsumerThread.WakeupTimeMs = 0;
-                oConsumerThread.OnThreadTriggerAsync += ConsumerTaskAsync;
-                oConsumerThread.AllowEventOverlap = false;
-                e.AddResult(oConsumerThread.Create());
-            });
+            string sM = nameof(ProducerConumerBase_OnCreateImplementationAsync);
+            oConsumerThread.Name = $"{Name}.ConsumerThread";
+            oConsumerThread.WakeupTimeMs = 0;
+            oConsumerThread.Trigger += ConsumerTask;
+            oConsumerThread.AllowEventOverlap = false;
+            e.AddResult(await oConsumerThread.CreateAsync());
         }
         private async Task ProducerConumerBase_OnDestroyImplementationAsync(object? sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
+            string sM = nameof(ProducerConumerBase_OnDestroyImplementationAsync);
+            if (oConsumerThread != null)
             {
-                string sM = nameof(ProducerConumerBase_OnDestroyImplementationAsync);
-                var res = oConsumerThread?.Destroy() ?? Result.CreateResultSuccess();
-                e.AddResult(res);
-            });
+                e.AddResult(await oConsumerThread?.DestroyAsync());
+            }
+            else
+            {
+                e.AddResult(Result.CreateResultSuccess());
+            }
         }
         
 
@@ -152,30 +152,26 @@ namespace DSG.ProducerConsumer
 
 
 
-        async Task ConsumerTaskAsync(object? sender, ThreadEventArgs e)
+        void ConsumerTask(object? sender, ThreadEventArgs e)
         {
-            await Task.Run(() =>
+            string sM = nameof(ConsumerTask);
+            try
             {
-                string sM = nameof(ConsumerTaskAsync);
-                try
+                int iPar = Math.Max(1, MaxConsumerParallelism);
+                while (!oProducerQueue.QueueEmpty)
                 {
-                    int iPar = Math.Max(1, MaxConsumerParallelism);
-                    while (!oProducerQueue.QueueEmpty)
+                    e.CancellationToken?.ThrowIfCancellationRequested();
+                    Parallel.For(0, iPar, X =>
                     {
-                        e.CancellationTokenSource?.Token.ThrowIfCancellationRequested();
-                        Parallel.For(0, iPar, X =>
-                        {
-                            Consume();
-                        });
-                    }
+                        Consume();
+                    });
                 }
-                catch (Exception ex)
-                {
-                    oConsumerCounter.AddErrorEvent();
-                    HandleError(sM, sM, ex, ConsumeError);
-                }
-                //          });
-            });
+            }
+            catch (Exception ex)
+            {
+                oConsumerCounter.AddErrorEvent();
+                HandleError(sM, sM, ex, ConsumeError);
+            }
         }
 
 
@@ -211,7 +207,7 @@ namespace DSG.ProducerConsumer
                             Data = item,
                             ProductionResult = oProduceRes,
                         });
-                        oConsumerThread.ThreadSignal();
+                        oConsumerThread.SignalTrigger();
                     }
                     else
                     {

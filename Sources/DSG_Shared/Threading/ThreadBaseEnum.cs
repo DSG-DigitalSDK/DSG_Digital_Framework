@@ -31,5 +31,9 @@ namespace DSG.Threading
         /// Timer polling AutoresetEvent is set
         /// </summary>
         Timeout = 4,
+        /// <summary>
+        /// Timer polling AutoresetEvent is set
+        /// </summary>
+        TimeoutDrop = 5,
     }
 }

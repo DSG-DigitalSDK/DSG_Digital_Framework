@@ -38,9 +38,14 @@ namespace DSG.IO
 
 
         Task<Result> ReadDataAsync();
-        Result ReadData();
+  //      Result ReadData();
         Task<Result> WriteDataAsync(object oBuffer);
-        Result WriteData(object oBuffer);        
+  //      Result WriteData(object oBuffer);
+
+
+        public Result FlushRead();
+        public Result FlushWrite();
+        public Result Flush();
 
     }
 }

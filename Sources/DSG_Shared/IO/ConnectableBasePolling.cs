@@ -18,8 +18,8 @@ namespace DSG.IO
         static string sC = nameof(ConnectableBasePolling);   
         
 
-        ThreadBase oReadThread = new ThreadBase();
-        ThreadBase oWriteThread = new ThreadBase();
+//        ThreadBaseSimple oReadThread = new();
+        ThreadBaseAsync oReadThread = new();
 
         public bool EnableReader 
         {
@@ -31,113 +31,75 @@ namespace DSG.IO
             get => oReadThread.WakeupTimeMs;
             set => oReadThread.WakeupTimeMs = value;
         }
-        public bool EnableWriter
-        {
-            get => oWriteThread.Enabled;
-            set => oWriteThread.Enabled = value;
-        }
-        public int PollingWriteMs
-        {
-            get => oWriteThread.WakeupTimeMs;
-            set => oWriteThread.WakeupTimeMs = value;
-        }
-
-        QueueHandler<object> oWriteQueue = new  QueueHandler<object>();
-        public int WriteQueueCount => oWriteQueue.Count;
-        public int WriteQueueCapacity
-        {
-            get => oWriteQueue.MaxQueueSize;
-            set => oWriteQueue.MaxQueueSize = value;
-        }
+       
 
         public ConnectableBasePolling()
         {
-            oReadThread.OnThreadWakeupAsync += TaskReadData;
-            oWriteThread.OnThreadTriggerAsync += TaskWriteData;
+            //oReadThread.Wakeup += TaskReadData;
+            oReadThread.WakeupAsync += TaskReadDataAsync;
             OnCreateImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
             OnDestroyImplementationAsync += ConnectableBasePolling_OnDestroyImplementationAsync;
-            OnConnectImplementationAsync += ConnectableBasePolling_OnCreateImplementationAsync;
+            OnConnectImplementationAsync += ConnectableBasePolling_OnConnectImplementationAsync;
             OnDisconnectImplementationAsync += ConnectableBasePolling_OnDisconnectImplementationAsync;
         }
 
-        private Task OReadThread_OnThreadWakeup(object arg1, ThreadEventArgs arg2)
-        {
-            throw new NotImplementedException();
-        }
+        
 
         private async Task ConnectableBasePolling_OnCreateImplementationAsync(object sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
-            {
-                oReadThread.Name = $"{Name}.Reader";
-                e.AddResult(oReadThread.Create());
-                oWriteThread.Name = $"{Name}.Writer";
-                e.AddResult(oWriteThread.Create());
-                oWriteQueue.CreateQueue();
-            });
-        }
+            oReadThread.Name = $"{Name}.Reader";
+            e.AddResult(await oReadThread.CreateAsync());
+          }
 
         private async Task ConnectableBasePolling_OnDestroyImplementationAsync(object sender, ResultEventArgs e)
         {
-            await Task.Run(() =>
-            {
-                e.AddResult(oReadThread.Destroy());
-                e.AddResult(oWriteThread.Destroy());
-                oWriteQueue.Clear();
-            });
+            e.AddResult(await oReadThread.DestroyAsync());
         }
 
         private Task ConnectableBasePolling_OnConnectImplementationAsync(object? sender, ResultEventArgs e)
         {
             oReadThread.TimerStart();
-            oWriteThread.TimerStart();
             return Task.CompletedTask;
         }
 
         private Task ConnectableBasePolling_OnDisconnectImplementationAsync(object? sender, ResultEventArgs e)
         {
             oReadThread.TimerStop();
-            oWriteThread.TimerStop();
             return Task.CompletedTask;
         }
 
-        public void EnqueueWriteData( object oBuffer)
-        {
-            if (oBuffer == null)
-                return;
-            oWriteQueue.Enqueue(oBuffer);
-            oWriteThread.ThreadSignal();
-        }
+       
 
-        private Task TaskReadData(object? sender, EventArgs e)
+        //private void TaskReadData(object? sender, EventArgs e)
+        //{
+        //    string sM = nameof(TaskReadData);
+        //    Result res;
+        //    do
+        //    {
+        //        res =  ReadDataAsync().GetAwaiter().GetResult();
+        //    }
+        //    while (res.Valid);
+        //    if (res.HasError && res.OperationResult != OperationResult.ErrorTimeout )
+        //    {
+        //        LogMan.Error(sC, sM, $"{oReadThread.Name} : Error reading data : {res.ErrorMessage}");
+        //    }
+        //}
+
+        private async Task TaskReadDataAsync(object arg1, ThreadEventArgs arg2)
         {
-            string sM = nameof(TaskReadData);
+            string sM = nameof(TaskReadDataAsync);
             Result res;
             do
             {
-                res = ReadData();
+                res = await ReadDataAsync();
+                //await Task.Delay(10000);
+                //res = Result.CreateResultError();
             }
             while (res.Valid);
-            if (res.HasError && res.OperationResult != OperationResult.ErrorTimeout )
+            if (res.HasError && res.OperationResult != OperationResult.ErrorTimeout)
             {
                 LogMan.Error(sC, sM, $"{oReadThread.Name} : Error reading data : {res.ErrorMessage}");
             }
-            return Task.CompletedTask;  
-        }
-
-        private Task TaskWriteData(object? sender, EventArgs e)
-        {
-            string sM = nameof(TaskWriteData);
-            while (oWriteQueue.Count > 0)
-            {
-                object oBuffer = oWriteQueue.Dequeue();
-                var res = WriteData(oBuffer);                    
-                if (PollingWriteMs > 0)
-                {
-                    Thread.Sleep(PollingWriteMs);  
-                }
-            }
-            return Task.CompletedTask;  
         }
     }
 }

@@ -8,13 +8,13 @@ namespace DSG.Log
 {
     public class LogEventArgs : EventArgs
     {
-        internal DateTime TimeStamp { get; set; }
-        internal string? Class { get; set; }
-        internal LogLevel Level { get; set; }
-        internal string? Method { get; set; }
-        internal string? Message { get; set; }
-        internal string? FormattedMessage { get; set; }
-        internal Exception? Exception { get; set; }
+        public DateTime TimeStamp { get; set; }
+        public string? Class { get; set; }
+        public LogLevel Level { get; set; }
+        public string? Method { get; set; }
+        public string? Message { get; set; }
+        public string? FormattedMessage { get; set; }
+        public Exception? Exception { get; set; }
 
         public override string ToString()
         {
