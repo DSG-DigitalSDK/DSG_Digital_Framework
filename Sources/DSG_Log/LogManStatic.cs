@@ -20,7 +20,7 @@ namespace DSG.Log
         #region Support Classes
         //internal class LogMessage
         //{
-        //    internal DateTime TimeStamp { get; set; }
+        //    internal DateTimeOffset TimeStamp { get; set; }
         //    internal string? Class { get; set; }
         //    internal LogLevel Level { get; set; }
         //    internal string? Method { get; set; }
@@ -181,7 +181,7 @@ namespace DSG.Log
         /// <param name="sM">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        internal static void Log(DateTime dtTimeStamp, LogLevel eLevel, string? sClass, string? sM, string? sMessage, Exception? ex)
+        internal static void Log(DateTimeOffset dtTimeStamp, LogLevel eLevel, string? sClass, string? sM, string? sMessage, Exception? ex)
         {
             var oArgs = new LogEventArgs()
             {
@@ -191,7 +191,8 @@ namespace DSG.Log
                 Method = sM,
                 Message = sMessage,
                 Exception = ex,
-                FormattedMessage = $"{dtTimeStamp:yyyy-MM-dd HH:mm:ss.fff} | {eLevel} | {sClass}.{sM} : {sMessage} {GetExceptionMessage(ex)}"
+                //                FormattedMessage = $"{dtTimeStamp:yyyy-MM-dd HH:mm:ss.fff} | {eLevel} | {sClass}.{sM} : {sMessage} {GetExceptionMessage(ex)}"
+                FormattedMessage = $"{dtTimeStamp:o} | {eLevel} | {sClass}.{sM} : {sMessage} {GetExceptionMessage(ex)}"
             };
 
             if (!Initialized)
@@ -215,7 +216,7 @@ namespace DSG.Log
         /// <param name="ex">Exception info</param>
         public static void Fatal(string sClass, string sM, string sMessage, Exception ex)
         {
-            Log(DateTime.Now,LogLevel.Fatal, sClass, sM, sMessage, ex); 
+            Log(DateTimeOffset.Now,LogLevel.Fatal, sClass, sM, sMessage, ex); 
         }
 
         /// <summary>
@@ -227,7 +228,7 @@ namespace DSG.Log
         /// <param name="ex">Exception info</param>
         public static void Exception(string sClass, string sM, string sMessage, Exception ex)
         {
-            Log(DateTime.Now, LogLevel.Exception, sClass, sM, sMessage, ex);
+            Log(DateTimeOffset.Now, LogLevel.Exception, sClass, sM, sMessage, ex);
         }
 
         /// <summary>
@@ -238,7 +239,7 @@ namespace DSG.Log
         /// <param name="ex">Exception info</param>
         public static void Exception(string sClass, string sM, Exception ex)
         {
-            Log(DateTime.Now, LogLevel.Exception, sClass, sM, "Exception raised", ex);
+            Log(DateTimeOffset.Now, LogLevel.Exception, sClass, sM, "Exception raised", ex);
         }
 
 
@@ -252,7 +253,7 @@ namespace DSG.Log
         public static void Error(string sClass, string sM, string sMessage, Exception ex)
         {
             var eLevel = ex == null ? LogLevel.Error : LogLevel.Fatal;
-            Log(DateTime.Now, eLevel, sClass, sM, sMessage, ex);
+            Log(DateTimeOffset.Now, eLevel, sClass, sM, sMessage, ex);
         }
 
         /// <summary>
@@ -263,7 +264,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Error(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Error, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Error, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -274,7 +275,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Warning(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Warning, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Warning, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -285,7 +286,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Pass(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Pass, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Pass, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -296,7 +297,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void TrackUser(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.TrackUser, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.TrackUser, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -307,7 +308,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Message(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Message, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Message, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -318,7 +319,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Debug(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Debug, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Debug, sClass, sM, sMessage, null);
         }
 
         /// <summary>
@@ -329,7 +330,7 @@ namespace DSG.Log
         /// <param name="sMessage">Log message</param>
         public static void Trace(string sClass, string sM, string sMessage)
         {
-            Log(DateTime.Now, LogLevel.Trace, sClass, sM, sMessage, null);
+            Log(DateTimeOffset.Now, LogLevel.Trace, sClass, sM, sMessage, null);
         }
 
 

@@ -986,7 +986,7 @@ namespace DSG.Imaging
         /// <param name="oTimeStamp">Frame timestamp identifier</param>
         /// <param name="bUseTicks">Timestamp dump mode (DateTime or SystemTicks)</param>
         /// <returns></returns>
-        public static string CreateFormattedString(string sFileName, long? iFrameID, int? iFrameIDPadding, DateTime? oTimeStamp, Boolean? bUseTicks)
+        public static string CreateFormattedString(string sFileName, long? iFrameID, int? iFrameIDPadding, DateTimeOffset? oTimeStamp, Boolean? bUseTicks)
         {
             string sSaveFile = sFileName;
             if (oTimeStamp != null)

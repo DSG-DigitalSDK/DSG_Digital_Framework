@@ -8,7 +8,7 @@ namespace DSG.Log
 {
     public class LogEventArgs : EventArgs
     {
-        public DateTime TimeStamp { get; set; }
+        public DateTimeOffset TimeStamp { get; set; }
         public string? Class { get; set; }
         public LogLevel Level { get; set; }
         public string? Method { get; set; }

@@ -21,7 +21,7 @@ namespace DSG.ProducerConsumer
         #region Support Classes
         public class ProducerConsumerDataContainer<T> where T : class
         {
-            public DateTime Timestamp { get; init; } = DateTime.Now;
+            public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
             public required T Data { get; set; }
             public required Result ProductionResult { get; set; }
         }

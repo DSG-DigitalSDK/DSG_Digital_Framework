@@ -9,7 +9,7 @@ namespace DSG.Base
 {
     public class ResultEventArgs : EventArgs
     {
-        public DateTime Timestamp { get; internal set; } = DateTime.Now;
+        public DateTimeOffset Timestamp { get; internal set; } = DateTimeOffset.Now;
         public List<Result> ResultList { get; private set; } = new List<Result>();
         public CancellationTokenSource? CancellationTokenSource { get; set; }
         public bool HasError => ResultList.Any(X => X.HasError);

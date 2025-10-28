@@ -15,7 +15,7 @@ namespace DSG.IO
         public int SleepMs { get; set; } = 1000;
         public int SleepRandomMaxMs { get; set; } = 1000;
 
-        Random oRand = new Random((int)DateTime.Now.Ticks);
+        Random oRand = new Random((int)DateTimeOffset.Now.Ticks);
 
         async Task SleepAsync(string sMethod )
         {

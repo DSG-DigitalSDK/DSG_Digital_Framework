@@ -22,7 +22,7 @@ namespace DSG.Log
         /// <param name="sMethod">Source Method</param>
         /// <param name="sMessage">Log message</param>
         /// <param name="ex">Exception info</param>
-        void Log(DateTime dtTimeStamp, LogLevel eLevel, string? sClass, string? sMethod, string? sMessage, Exception? ex);
+        void Log(DateTimeOffset dtTimeStamp, LogLevel eLevel, string? sClass, string? sMethod, string? sMessage, Exception? ex);
 
         /// <summary>
         /// Trace a Fatal message (application hangs)
