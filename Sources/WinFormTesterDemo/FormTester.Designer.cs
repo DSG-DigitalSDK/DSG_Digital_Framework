@@ -45,12 +45,16 @@
             tabPage2 = new TabPage();
             lbLog = new ListBox();
             oTimerLog = new System.Windows.Forms.Timer(components);
+            tableLayoutPanel1 = new TableLayoutPanel();
+            panel1 = new Panel();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
             splitContainer1.Panel1.SuspendLayout();
             splitContainer1.Panel2.SuspendLayout();
             splitContainer1.SuspendLayout();
             tcMain.SuspendLayout();
             tpSerial.SuspendLayout();
+            tableLayoutPanel1.SuspendLayout();
+            panel1.SuspendLayout();
             SuspendLayout();
             // 
             // splitContainer1
@@ -67,7 +71,7 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(lbLog);
-            splitContainer1.Size = new Size(800, 450);
+            splitContainer1.Size = new Size(1010, 450);
             splitContainer1.SplitterDistance = 266;
             splitContainer1.TabIndex = 0;
             // 
@@ -79,40 +83,31 @@
             tcMain.Location = new Point(0, 0);
             tcMain.Name = "tcMain";
             tcMain.SelectedIndex = 0;
-            tcMain.Size = new Size(800, 266);
+            tcMain.Size = new Size(1010, 266);
             tcMain.TabIndex = 0;
             // 
             // tpSerial
             // 
-            tpSerial.Controls.Add(propertyGrid2);
-            tpSerial.Controls.Add(btnSerStop);
-            tpSerial.Controls.Add(bynSerStart);
-            tpSerial.Controls.Add(label3);
-            tpSerial.Controls.Add(label2);
-            tpSerial.Controls.Add(label1);
-            tpSerial.Controls.Add(propertyGrid1);
-            tpSerial.Controls.Add(textBox3);
-            tpSerial.Controls.Add(textBox2);
-            tpSerial.Controls.Add(textBox1);
+            tpSerial.Controls.Add(tableLayoutPanel1);
             tpSerial.Location = new Point(4, 24);
             tpSerial.Name = "tpSerial";
             tpSerial.Padding = new Padding(3);
-            tpSerial.Size = new Size(792, 238);
+            tpSerial.Size = new Size(1002, 238);
             tpSerial.TabIndex = 0;
             tpSerial.Text = "Serial Test";
             tpSerial.UseVisualStyleBackColor = true;
             // 
             // propertyGrid2
             // 
-            propertyGrid2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            propertyGrid2.Location = new Point(550, 6);
+            propertyGrid2.Dock = DockStyle.Fill;
+            propertyGrid2.Location = new Point(667, 3);
             propertyGrid2.Name = "propertyGrid2";
-            propertyGrid2.Size = new Size(202, 226);
+            propertyGrid2.Size = new Size(326, 226);
             propertyGrid2.TabIndex = 9;
             // 
             // btnSerStop
             // 
-            btnSerStop.Location = new Point(91, 209);
+            btnSerStop.Location = new Point(93, 191);
             btnSerStop.Name = "btnSerStop";
             btnSerStop.Size = new Size(75, 23);
             btnSerStop.TabIndex = 8;
@@ -122,7 +117,7 @@
             // 
             // bynSerStart
             // 
-            bynSerStart.Location = new Point(10, 209);
+            bynSerStart.Location = new Point(12, 191);
             bynSerStart.Name = "bynSerStart";
             bynSerStart.Size = new Size(75, 23);
             bynSerStart.TabIndex = 7;
@@ -133,7 +128,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(10, 92);
+            label3.Location = new Point(12, 98);
             label3.Name = "label3";
             label3.Size = new Size(53, 15);
             label3.TabIndex = 6;
@@ -142,7 +137,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(10, 50);
+            label2.Location = new Point(12, 56);
             label2.Name = "label2";
             label2.Size = new Size(47, 15);
             label2.TabIndex = 5;
@@ -151,7 +146,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(10, 9);
+            label1.Location = new Point(12, 15);
             label1.Name = "label1";
             label1.Size = new Size(48, 15);
             label1.TabIndex = 4;
@@ -159,33 +154,33 @@
             // 
             // propertyGrid1
             // 
-            propertyGrid1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            propertyGrid1.Location = new Point(342, 6);
+            propertyGrid1.Dock = DockStyle.Fill;
+            propertyGrid1.Location = new Point(335, 3);
             propertyGrid1.Name = "propertyGrid1";
-            propertyGrid1.Size = new Size(202, 226);
+            propertyGrid1.Size = new Size(326, 226);
             propertyGrid1.TabIndex = 3;
             // 
             // textBox3
             // 
-            textBox3.Location = new Point(69, 89);
+            textBox3.Location = new Point(71, 95);
             textBox3.Name = "textBox3";
-            textBox3.Size = new Size(267, 23);
+            textBox3.Size = new Size(232, 23);
             textBox3.TabIndex = 2;
             textBox3.Text = "Hello World";
             // 
             // textBox2
             // 
-            textBox2.Location = new Point(69, 47);
+            textBox2.Location = new Point(71, 53);
             textBox2.Name = "textBox2";
-            textBox2.Size = new Size(267, 23);
+            textBox2.Size = new Size(232, 23);
             textBox2.TabIndex = 1;
             textBox2.Text = "COM2,9600,ODD,7,1,RTS";
             // 
             // textBox1
             // 
-            textBox1.Location = new Point(69, 6);
+            textBox1.Location = new Point(71, 12);
             textBox1.Name = "textBox1";
-            textBox1.Size = new Size(267, 23);
+            textBox1.Size = new Size(232, 23);
             textBox1.TabIndex = 0;
             textBox1.Text = "COM1,9600,ODD,7,1,RTS";
             // 
@@ -206,7 +201,7 @@
             lbLog.ItemHeight = 15;
             lbLog.Location = new Point(0, 0);
             lbLog.Name = "lbLog";
-            lbLog.Size = new Size(800, 180);
+            lbLog.Size = new Size(1010, 180);
             lbLog.TabIndex = 0;
             // 
             // oTimerLog
@@ -215,11 +210,45 @@
             oTimerLog.Interval = 500;
             oTimerLog.Tick += oTimerLog_Tick;
             // 
+            // tableLayoutPanel1
+            // 
+            tableLayoutPanel1.ColumnCount = 3;
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel1.Controls.Add(propertyGrid2, 2, 0);
+            tableLayoutPanel1.Controls.Add(propertyGrid1, 1, 0);
+            tableLayoutPanel1.Controls.Add(panel1, 0, 0);
+            tableLayoutPanel1.Dock = DockStyle.Fill;
+            tableLayoutPanel1.Location = new Point(3, 3);
+            tableLayoutPanel1.Name = "tableLayoutPanel1";
+            tableLayoutPanel1.RowCount = 1;
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel1.Size = new Size(996, 232);
+            tableLayoutPanel1.TabIndex = 10;
+            // 
+            // panel1
+            // 
+            panel1.Controls.Add(label1);
+            panel1.Controls.Add(btnSerStop);
+            panel1.Controls.Add(textBox1);
+            panel1.Controls.Add(bynSerStart);
+            panel1.Controls.Add(textBox2);
+            panel1.Controls.Add(label3);
+            panel1.Controls.Add(textBox3);
+            panel1.Controls.Add(label2);
+            panel1.Dock = DockStyle.Fill;
+            panel1.Location = new Point(3, 3);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(326, 226);
+            panel1.TabIndex = 10;
+            // 
             // FormTester
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(1010, 450);
             Controls.Add(splitContainer1);
             Name = "FormTester";
             Text = "Form1";
@@ -229,7 +258,9 @@
             splitContainer1.ResumeLayout(false);
             tcMain.ResumeLayout(false);
             tpSerial.ResumeLayout(false);
-            tpSerial.PerformLayout();
+            tableLayoutPanel1.ResumeLayout(false);
+            panel1.ResumeLayout(false);
+            panel1.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -251,5 +282,7 @@
         private PropertyGrid propertyGrid2;
         private ListBox lbLog;
         private System.Windows.Forms.Timer oTimerLog;
+        private TableLayoutPanel tableLayoutPanel1;
+        private Panel panel1;
     }
 }

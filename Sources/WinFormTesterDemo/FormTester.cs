@@ -92,11 +92,11 @@ namespace WinFormTesterDemo
                 int i = 0;
                 await oSerialA.CreateAsync();
                 oSerialA.Connect();
-                while (i <= 0)
+                while (i < 100)
                 {
                     oToken.ThrowIfCancellationRequested();
                     await oSerialA.WriteDataAsync($"{sMessA} {++i}");
-                    await Task.Delay(10000);
+                    await Task.Delay(100);
                 }
             }));
           
@@ -105,11 +105,11 @@ namespace WinFormTesterDemo
                 int i = 0;
                 await oSerialB.CreateAsync();
                 oSerialB.Connect();
-                while (i <= 0)
+                while (i < 100)
                 {
                     oToken.ThrowIfCancellationRequested();
                     await oSerialB.WriteDataAsync($"{sMessB} {++i}");
-                    await Task.Delay(10000);
+                    await Task.Delay(100);
                 }
 
             }));

@@ -241,7 +241,7 @@ namespace DSG.Shared
         /// <param name="dIntervalLO">Interval lower bound</param>
         /// <param name="dIntervalHI">Intervasl higher bound</param>
         /// <param name="iBinsNumber">Total bins wanted</param>
-        public void Init(double dIntervalLO, double dIntervalHI, int iBinsNumber)
+        public void Create(double dIntervalLO, double dIntervalHI, int iBinsNumber)
         {
             Reset();
             if (iBinsNumber > 1 && dIntervalLO < dIntervalHI )// && dIntervalLO >= 0)
@@ -283,7 +283,7 @@ namespace DSG.Shared
         /// <param name="dIntervalLO">Interval lower bound</param>
         /// <param name="dIntervalHI">Intervasl higher bound</param>
         /// <param name="dBinIntervalWidth">Width of the Bin (last may be resized automatically)</param>
-        public void Init(double dIntervalLO, double dIntervalHI, double dBinIntervalWidth)
+        public void Create(double dIntervalLO, double dIntervalHI, double dBinIntervalWidth)
         {
             Reset();
             if (dBinIntervalWidth > 0 && dIntervalLO < dIntervalHI )// && dIntervalLO >= 0)

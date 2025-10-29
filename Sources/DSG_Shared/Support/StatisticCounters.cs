@@ -2,12 +2,15 @@
 using DSG.Shared;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace DSG.Shared
 {
+    [Serializable]
+    [TypeConverter(typeof(ExpandableObjectConverter))]
     public class StatisticCounters
     {
         static string sC = nameof(StatisticCounters);
@@ -19,10 +22,10 @@ namespace DSG.Shared
         public long EventError { get; private set; } = 0;
         public long EventTimeout { get; private set; } = 0;
         public long EventDropped { get; private set; } = 0;
-        public Statistics TimeStatistics { get; private set; } = new Statistics();
+        public BinCounter TimeStatistics { get; private set; } = new();
 
         public TimeElapser TimeStart() => new TimeElapser();
-        public void AddStatisticTime(TimeElapser oTE) => TimeStatistics.AddValue( oTE.Stop().TotalMilliseconds );
+        public void AddStatisticTime(TimeElapser oTE) => TimeStatistics.BinAdd( oTE.Stop().TotalMilliseconds );
 
         public void ResetCounters()
         {
@@ -31,7 +34,7 @@ namespace DSG.Shared
             try
             {
                 oLocker.Enter(ref bTaken);
-                TimeStatistics.ResetCounters();
+                TimeStatistics.ResetBins();
                 EventValid = EventDropped = EventError = EventCounter = 0;
             }
             catch (Exception ex)
@@ -143,10 +146,7 @@ namespace DSG.Shared
 
         public StatisticCounters()
         {
-            TimeStatistics.IntervalStart = 0;
-            TimeStatistics.IntervalEnd = 10*1000;
-            TimeStatistics.IntervalResolution = 10;
-            TimeStatistics.Create();
+            TimeStatistics.Create(0, 10 * 1000, 1000);
             ResetCounters();
         }
     }
