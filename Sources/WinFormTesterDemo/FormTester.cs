@@ -1,6 +1,9 @@
+using DSG.Drivers.Siemens;
+using DSG.IO;
 using DSG.Log;
 using DSG_Streaming;
 using System.Collections.Concurrent;
+using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WinFormTesterDemo
@@ -14,14 +17,14 @@ namespace WinFormTesterDemo
             LogMan.OnLogMessage += LogMan_OnLogMessage;
         }
 
-        ConcurrentQueue<string> oQueueMessage = new();  
+        ConcurrentQueue<string> oQueueMessage = new();
 
         private void LogMan_OnLogMessage(object? sender, LogEventArgs e)
         {
             oQueueMessage.Enqueue(e.FormattedMessage);
             while (oQueueMessage.Count > 100)
             {
-                oQueueMessage.TryDequeue( out var s);
+                oQueueMessage.TryDequeue(out var s);
             }
         }
 
@@ -34,9 +37,9 @@ namespace WinFormTesterDemo
             }
             SuspendLayout();
             var oList = oQueueMessage.ToList();
-             oList.Reverse();
+            oList.Reverse();
             lbLog.Items.Clear();
-            lbLog.Items.AddRange( oList.ToArray() );
+            lbLog.Items.AddRange(oList.ToArray());
             ResumeLayout();
         }
 
@@ -72,8 +75,8 @@ namespace WinFormTesterDemo
                 DataMode = DSG.Base.StreamMode.Text,
             };
 
-            propertyGrid1.SelectedObject = oSerialA;
-            propertyGrid2.SelectedObject = oSerialB;
+            pgSer1.SelectedObject = oSerialA;
+            pgSer2.SelectedObject = oSerialB;
 
             oSerialA.DataReaded += (s, e) =>
                 LogMan.Message(sC, sM, $"{oSerialA.Name} : {e.Timestamp: HH:mm:ss.fff} : Received {e.ResultList.FirstOrDefault()?.Tag?.ToString()}");
@@ -87,7 +90,7 @@ namespace WinFormTesterDemo
             string sMessA = $"{oSerialA.ConnectionName} {textBox3.Text}";
             string sMessB = $"{oSerialB.ConnectionName} {textBox3.Text}";
             List<Task> tasks = new List<Task>();
-            tasks.Add( Task.Run(async () =>
+            tasks.Add(Task.Run(async () =>
             {
                 int i = 0;
                 await oSerialA.CreateAsync();
@@ -99,7 +102,7 @@ namespace WinFormTesterDemo
                     await Task.Delay(100);
                 }
             }));
-          
+
             tasks.Add(Task.Run(async () =>
             {
                 int i = 0;
@@ -124,8 +127,8 @@ namespace WinFormTesterDemo
                 await oSerialB.DestroyAsync();
             oSerialA = null;
             oSerialB = null;
-            propertyGrid1.SelectedObject = null;
-            propertyGrid2.SelectedObject = null;
+            pgSer1.SelectedObject = null;
+            pgSer2.SelectedObject = null;
         }
 
 
@@ -143,5 +146,56 @@ namespace WinFormTesterDemo
 
         #endregion
 
+        private async void btnPlcTest_Click(object sender, EventArgs e)
+        {
+            lbPlc.Items.Clear();
+            DSG.Drivers.Siemens.S7DataHandler oPLC = new ();
+            oPLC.ConnectionString = "192.168.17.37,0,0";
+            var item = new DSG.Drivers.Siemens.S7PlcDataItem()
+            {
+                 Area = DSG.Drivers.Siemens.S7PlcArea.DB,
+                 DbNum  = 0,
+                 Length = 1,
+                 Offset = 0,
+            };
+            oPLC.ReadDataListTemplate.Add(item);
+            oPLC.EnableReader = false;
+            var res1 = await oPLC.CreateAsync();
+            if (res1.HasError)
+            {
+                return;
+            }
+            for (int i = 0; i <= 50; i++)
+            {
+                for (int l = 1; l <= 100; l++)
+                {
+                    item.DbNum = i;
+                    item.Length = l;
+                    var res2 = await oPLC.ReadDataAsync();
+                    if (res2.Valid)
+                    {
+                        Invoke(() =>
+                        {
+                            pgPLC.SelectedObject = res2;
+                            if (res2.Tag is List<S7PlcDataItem> dataList)
+                            {
+                                foreach (var item in dataList)
+                                {
+                                    var sb = new StringBuilder(4000);
+                                    foreach (var buff in item.Data)
+                                    {
+                                        if (buff < 16)
+                                            sb.Append($"{buff},");
+                                        else
+                                            sb.Append($"{(char)buff},");
+                                    }
+                                    lbPlc.Items.Add(sb.ToString());
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
     }
 }

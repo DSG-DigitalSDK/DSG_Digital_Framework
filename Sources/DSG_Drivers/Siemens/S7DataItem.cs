@@ -23,7 +23,10 @@ namespace DSG.Drivers.Siemens
         public int DbNum { get; set; }
         public int Offset { get; set; }
         public int Length { get; set; }
-        public byte[]? Data { get; set; }
+
+        public byte[] Data => oData;
+
+        internal byte[]? oData;
 
         public override string ToString()
         {
@@ -39,11 +42,19 @@ namespace DSG.Drivers.Siemens
             return new S7PlcDataItem()
             {
                 Area = area,
-                Data = new byte[length],
+                oData = new byte[length],
                 DbNum = dbNum,
                 Length = length,
                 Offset = offset
             };
         }
+
+        static public S7PlcDataItem Create(S7PlcDataItem oItem)
+        {
+            if (oItem == null)
+                return null;
+            return Create( oItem.Area, oItem.DbNum, oItem.Offset, oItem.Length);
+        }
+
     }
 }

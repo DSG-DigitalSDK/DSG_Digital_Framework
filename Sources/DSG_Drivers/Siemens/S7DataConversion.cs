@@ -62,7 +62,7 @@ namespace DSG.Drivers.Siemens
                             return new S7Client.S7DataItem()
                             {
                                 Amount = oData.Length,
-                                WordLen = 2,
+                                WordLen = (int)S7WordLength.Byte,// S7Consts.S7WLByte,
                                 Area = (int)eArea,
                                 DBNumber = oData.DbNum,
                                 Start = oData.Offset,
@@ -107,9 +107,9 @@ namespace DSG.Drivers.Siemens
                                 DbNum = oItem.DBNumber,
                                 Offset = oItem.Start,
                                 Length = oItem.Amount,
-                                Data = new byte[oItem.Amount]
+                                oData = new byte[oItem.Amount]
                             };
-                            Marshal.Copy( oItem.pData, oData.Data, 0, oData.Data.Length);
+                            Marshal.Copy( oItem.pData, oData.Data, 0, oItem.Amount);
                             return oData;
                         }
                     default:
