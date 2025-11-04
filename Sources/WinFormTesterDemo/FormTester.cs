@@ -160,42 +160,45 @@ namespace WinFormTesterDemo
             };
             oPLC.ReadDataListTemplate.Add(item);
             oPLC.EnableReader = false;
+            pgPLC.SelectedObject = oPLC;
             var res1 = await oPLC.CreateAsync();
             if (res1.HasError)
             {
                 return;
             }
-            for (int i = 0; i <= 50; i++)
+            await Task.Run(async () =>
             {
-                for (int l = 1; l <= 100; l++)
+                for (int i = 0; i <= 50; i++)
                 {
-                    item.DbNum = i;
-                    item.Length = l;
-                    var res2 = await oPLC.ReadDataAsync();
-                    if (res2.Valid)
+                    for (int l = 1; l <= 100; l++)
                     {
-                        Invoke(() =>
+                        item.DbNum = i;
+                        item.Length = l;
+                        var res2 = await oPLC.ReadDataAsync();
+                        if (res2.Valid)
                         {
-                            pgPLC.SelectedObject = res2;
-                            if (res2.Tag is List<S7PlcDataItem> dataList)
+                            Invoke(() =>
                             {
-                                foreach (var item in dataList)
+                                if (res2.Tag is List<S7PlcDataItem> dataList)
                                 {
-                                    var sb = new StringBuilder(4000);
-                                    foreach (var buff in item.Data)
+                                    foreach (var item in dataList)
                                     {
-                                        if (buff < 16)
-                                            sb.Append($"{buff},");
-                                        else
-                                            sb.Append($"{(char)buff},");
+                                        var sb = new StringBuilder(4000);
+                                        foreach (var buff in item.Data)
+                                        {
+                                            if (buff < 16)
+                                                sb.Append($"{buff},");
+                                            else
+                                                sb.Append($"{(char)buff},");
+                                        }
+                                        lbPlc.Items.Add(sb.ToString());
                                     }
-                                    lbPlc.Items.Add(sb.ToString());
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
                 }
-            }
+            });
         }
     }
 }
