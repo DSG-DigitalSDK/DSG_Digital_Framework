@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSG_Streaming", "DSG_Stream
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSG_Drivers", "DSG_Drivers\DSG_Drivers.csproj", "{0E3A9A4A-0729-436E-BED5-5145D98D01C4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APP_LogViewer", "APP_LogViewer\APP_LogViewer.csproj", "{915989E4-76A2-4EDB-9739-D4687B049B94}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{0E3A9A4A-0729-436E-BED5-5145D98D01C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E3A9A4A-0729-436E-BED5-5145D98D01C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0E3A9A4A-0729-436E-BED5-5145D98D01C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{915989E4-76A2-4EDB-9739-D4687B049B94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{915989E4-76A2-4EDB-9739-D4687B049B94}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{915989E4-76A2-4EDB-9739-D4687B049B94}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{915989E4-76A2-4EDB-9739-D4687B049B94}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

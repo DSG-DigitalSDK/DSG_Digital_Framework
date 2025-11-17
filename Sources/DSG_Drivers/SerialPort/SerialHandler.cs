@@ -14,7 +14,7 @@ using DSG.IO;
 
 namespace DSG.Drivers.SerialPort
 {
-    public  class SerialHandler : ConnectableBasePolling
+    public  class SerialHandler : ReadWriteBase
     {
         static readonly string sC = nameof(SerialHandler);
 

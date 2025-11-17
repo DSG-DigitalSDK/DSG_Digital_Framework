@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace DSG.Base
 {
-    public abstract class CreateBase : DisposableBase, ICreatable
+    public abstract class CreateBase : DisposableBase, CreataInterface
     {
         static string sC = nameof(CreateBase);
 

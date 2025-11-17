@@ -21,21 +21,13 @@ namespace DSG.IO
     /// <item>Error handling and logging</item>
     /// </list>
     /// </summary>
-    public abstract class ConnectableBase : CreateBase, IConnectable
+    public abstract class ConnectableBase : CreateBase, ConnectableInterface
     {
         // Class name for logging
         static readonly string sC = nameof(ConnectableBase);
 
         // Semaphores to make operations thread-safe
-        SemaphoreSlim oConnSemaphore = new SemaphoreSlim(1, 1);
-        SemaphoreSlim oReadSemaphore = new SemaphoreSlim(1, 1);
-        SemaphoreSlim oWriteSemaphore = new SemaphoreSlim(1, 1);
-
-        /// <summary>
-        /// Unique identifier for this instance used in logs and events.
-        /// Format: '{Name}/{ConnectionName}'
-        /// </summary>
-        protected string ObjectID => $"'{Name}/{ConnectionName}'";
+        SemaphoreSlim oConnSemaphore = new SemaphoreSlim(1, 1);      
 
         /// <summary>
         /// Indicates whether the resource is currently connected
@@ -57,31 +49,18 @@ namespace DSG.IO
         /// </summary>
         public int ConnectionTimeoutMs { get; set; }
 
-        /// <summary>
-        /// Timeout for read operations in milliseconds
-        /// </summary>
-        public int ReadTimeoutMs { get; set; } = 1000;
-
-        /// <summary>
-        /// Timeout for write operations in milliseconds
-        /// </summary>
-        public int WriteTimeoutMs { get; set; } = 1000;
+     
 
         /// <summary>
         /// Enables automatic reconnection if the connection is lost
         /// </summary>
-        public bool AutoReconnect { get; set; } = true;
+       // public bool AutoReconnect { get; set; } = true;
 
-        /// <summary>
-        /// Counters for read operations (success, error, timeout, elapsed time)
-        /// </summary>
-        public StatisticCounters ReadCounters { get; private set; } = new StatisticCounters();
-
-        /// <summary>
-        /// Counters for write operations (success, error, timeout, elapsed time)
-        /// </summary>
-        public StatisticCounters WriteCounters { get; private set; } = new StatisticCounters();
-
+       
+        public bool AutoReconnection { get; set; }
+        public int ReconnectionMaxThenth { get; set; } = 3;
+        public int ReconnectionWaitMs { get; set; } = 30 * 1000;
+        
         #region Events
 
         // Connection events
@@ -92,17 +71,14 @@ namespace DSG.IO
         public event EventHandler<ResultEventArgs>? Disconnected;
         public event EventHandler<ResultEventArgs>? DisconnectError;
 
-        // Read/Write events
-        public event EventHandler? DataReading;
-        public event EventHandler<ResultEventArgs>? DataReaded;
-        public event EventHandler<ResultEventArgs>? DataReadError;
-        public event EventHandler? DataWriting;
-        public event EventHandler<ResultEventArgs>? DataWritten;
-        public event EventHandler<ResultEventArgs>? DataWriteError;
+      
 
         // Async implementation events for connection/disconnection
         public event Func<object, ResultEventArgs, Task>? OnConnectImplementationAsync;
         public event Func<object, ResultEventArgs, Task>? OnDisconnectImplementationAsync;
+        public event EventHandler<ResultEventArgs>? AutoReconnecting;
+        public event EventHandler<ResultEventArgs>? AutoReconnectError;
+        public event EventHandler<ResultEventArgs>? ConnectionFailure;
 
         #endregion
 
@@ -127,19 +103,23 @@ namespace DSG.IO
 
         public ConnectableBase()
         {
-            ResetReadCounters();
-            ResetWriteCounters();
+           
         }
 
-        /// <summary>
-        /// Resets read operation counters
-        /// </summary>
-        public void ResetReadCounters() => ReadCounters.ResetCounters();
+        event EventHandler<ResultEventArgs>? ConnectableInterface.AutoReconnect
+        {
+            add
+            {
+                throw new NotImplementedException();
+            }
 
-        /// <summary>
-        /// Resets write operation counters
-        /// </summary>
-        public void ResetWriteCounters() => WriteCounters.ResetCounters();
+            remove
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+     
 
         #endregion
 
@@ -157,8 +137,8 @@ namespace DSG.IO
             {
                 if (!Enabled)
                 {
-                    LogMan.Error(sC, sM, $"'{ObjectID}' : can't connect using a DISABLED instance");
-                    return Result.CreateResultError(OperationResult.Error, $"'{ObjectID}' : can't connect using a DISABLED instance", 0);
+                    LogMan.Error(sC, sM, $"'{ConnectionName}' : can't connect using a DISABLED instance");
+                    return Result.CreateResultError(OperationResult.Error, $"'{ConnectionName}' : can't connect using a DISABLED instance", 0);
                 }
 
                 if (!Initialized)
@@ -166,37 +146,37 @@ namespace DSG.IO
                     var ResC = await CreateAsync();
                     if (!Initialized)
                     {
-                        LogMan.Error(sC, sM, $"'{ObjectID}' : Creation Error");
+                        LogMan.Error(sC, sM, $"'{ConnectionName}' : Creation Error");
                         return ResC;
                     }
                 }
 
                 if (Connected)
                 {
-                    LogMan.Trace(sC, sM, $"{ObjectID} already connected");
+                    LogMan.Trace(sC, sM, $"{ConnectionName} already connected");
                     return Result.CreateResultSuccess();
                 }
 
                 // Raise connecting event
                 Connecting?.Invoke(this, EventArgs.Empty);
-                LogMan.Trace(sC, sM, $"Connecting to '{ObjectID}'");
+                LogMan.Trace(sC, sM, $"Connecting to '{ConnectionName}'");
 
                 var oArgs = new ResultEventArgs();
                 if (OnConnectImplementationAsync != null)
                     await OnConnectImplementationAsync.Invoke(this, oArgs);
                 else
-                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, ConnectionError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ConnectionName} : {nameof(OnConnectImplementationAsync)} not provided", 0, null, ConnectionError);
 
                 if (oArgs.Valid)
                 {
-                    LogMan.Message(sC, sM, $"{ObjectID} Connected");
+                    LogMan.Message(sC, sM, $"{ConnectionName} Connected");
                     Connected = true;
                     Connection?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
                 }
                 else
                 {
-                    LogMan.Error(sC, sM, $"Error Connecting to {ObjectID} : {oArgs.ResultError.ErrorMessage}");
+                    LogMan.Error(sC, sM, $"Error Connecting to {ConnectionName} : {oArgs.ResultError.ErrorMessage}");
                     Connected = false;
                     ConnectionError?.Invoke(this, oArgs);
                     return oArgs.ResultError;
@@ -246,16 +226,16 @@ namespace DSG.IO
 
                 if (OnDisconnectImplementationAsync == null)
                 {
-                    return HandleError(sC, sM, OperationResult.Error, $"{ObjectID} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, DisconnectError);
+                    return HandleError(sC, sM, OperationResult.Error, $"{ConnectionName} : {nameof(OnDisconnectImplementationAsync)} not provided", 0, null, DisconnectError);
                 }
 
-                LogMan.Trace(sC, sM, $"Disconnecting from {ObjectID}");
+                LogMan.Trace(sC, sM, $"Disconnecting from {ConnectionName}");
                 var oArgs = new ResultEventArgs();
                 await OnDisconnectImplementationAsync(this, oArgs);
 
                 if (oArgs.Valid)
                 {
-                    LogMan.Message(sC, sM, $"{ObjectID} Disconnected");
+                    LogMan.Message(sC, sM, $"{ConnectionName} Disconnected");
                     Connected = false;
                     if (wasConnected) Disconnected?.Invoke(this, oArgs);
                     return Result.CreateResultSuccess();
@@ -303,142 +283,25 @@ namespace DSG.IO
         /// <param name="sMethod">Calling method name</param>
         /// <param name="oEvent">Error event handler</param>
         /// <returns>Result of the connection check</returns>
-        async Task<Result> CheckConnection(string sMethod, EventHandler<ResultEventArgs>? oEvent)
+        protected async Task<Result> CheckConnectionAsync(string sMethod, EventHandler<ResultEventArgs>? oEvent)
         {
             if (Connected)
                 return Result.CreateResultSuccess();
 
-            if (!AutoReconnect)
-                return HandleError(sC, sMethod, OperationResult.Error, $"{ObjectID} : Communication channel closed", 0, oEvent);
+            if (!AutoReconnection)
+                return HandleError(sC, sMethod, OperationResult.Error, $"{ConnectionName} : Communication channel closed", 0, oEvent);
 
             var oResConn = await ConnectAsync();
             if (oResConn.HasError)
-                HandleError(sC, sMethod, OperationResult.Error, $"{ObjectID} : Cannot open communication channel", 0, oEvent);
+                HandleError(sC, sMethod, OperationResult.Error, $"{ConnectionName} : Cannot open communication channel", 0, oEvent);
 
             return oResConn;
         }
 
-        /// <summary>
-        /// Manages operation results: updates counters, logs, and raises appropriate events
-        /// </summary>
-        /// <param name="sMethod">Calling method name</param>
-        /// <param name="oRes">Operation result</param>
-        /// <param name="oCounters">Statistic counters</param>
-        /// <param name="oEventOk">Success event handler</param>
-        /// <param name="oEventError">Error event handler</param>
-        /// <returns>Same operation result for chaining</returns>
-        Result ManageResult(string sMethod, Result oRes,TimeElapser oTStart, StatisticCounters oCounters, EventHandler<ResultEventArgs>? oEventOk, EventHandler<ResultEventArgs>? oEventError)
-        {
-            if (oRes.Valid)
-            {
-                oCounters.AddStatisticTime(oTStart);
-                oCounters.AddValidEvent();
-                LogMan.Trace(sC, sMethod, $"{ObjectID} : Operation Successful");
-                oEventOk?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
-            }
-            else
-            {
-                if (oRes.OperationResult == OperationResult.ErrorTimeout)
-                {
-                    oCounters.AddTimeoutEvent();
-                    LogMan.Trace(sC, sMethod, $"{ObjectID} : Operation Timeout");
-                }
-                else
-                {
-                    oCounters.AddErrorEvent();
-                    LogMan.Error(sC, sMethod, $"{ObjectID} : Operation Error : {oRes.ErrorMessage}");
-                }
-                oEventError?.Invoke(this, ResultEventArgs.CreateEventArgs(oRes));
-            }
-            return oRes;
-        }
+       
 
         #endregion
 
-        #region Read / Write Methods
-
-        /// <summary>
-        /// Asynchronously reads data from the resource
-        /// </summary>
-        /// <returns>Result of the read operation</returns>
-        public async Task<Result> ReadDataAsync()
-        {
-            string sM = nameof(ReadDataAsync);
-            await oReadSemaphore.WaitAsync();
-            try
-            {
-                LogMan.Trace(sC, sM, $"{ObjectID} : Reading Data");
-                DataReading?.Invoke(this, EventArgs.Empty);
-
-                Result oRes = await CheckConnection(sM, DataReadError);
-                if (oRes.HasError) return oRes;
-
-                var oTS = ReadCounters.TimeStart();
-                oRes = await ReadImplementationAsync();
-
-                return ManageResult(sM, oRes, oTS, ReadCounters, DataReaded, DataReadError);
-            }
-            catch (Exception ex)
-            {
-                return HandleError(sC, sM, ex, DataReadError);
-            }
-            finally
-            {
-                oReadSemaphore.Release();
-            }
-        }
-
-        
-
-        /// <summary>
-        /// Asynchronously writes data to the resource
-        /// </summary>
-        /// <param name="oObj">Object containing data to write</param>
-        /// <returns>Result of the write operation</returns>
-        public async Task<Result> WriteDataAsync(object oObj)
-        {
-            string sM = nameof(WriteDataAsync);
-            await oWriteSemaphore.WaitAsync();
-            try
-            {
-                Result oRes = await CheckConnection(sM, DataWriteError);
-                if (oRes.HasError) return oRes;
-
-                LogMan.Trace(sC, sM, $"{ObjectID} : Writing Data");
-                DataWriting?.Invoke(this, EventArgs.Empty);
-
-                var oTS = WriteCounters.TimeStart();
-                oRes = await WriteImplementationAsync(oObj);
-
-                return ManageResult(sM, oRes, oTS, WriteCounters, DataWritten, DataWriteError);
-            }
-            catch (Exception ex)
-            {
-                WriteCounters.AddErrorEvent();
-                return HandleError(sC, sM, ex, DataWriteError);
-            }
-            finally
-            {
-                oWriteSemaphore.Release();
-            }
-        }
-
-
-        public abstract Result FlushRead();
-
-        public abstract Result FlushWrite();
-
-        public Result Flush() 
-        {
-            var a = FlushRead();    
-            var b = FlushWrite();
-            if (!a.Valid)
-                return a;
-            if (!b.Valid)
-                return b;
-            return Result.CreateResultSuccess();
-        }
-
-        #endregion
+       
     }
 }

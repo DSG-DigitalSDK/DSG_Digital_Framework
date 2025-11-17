@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace DSG.Drivers.Siemens
 {
-    public class S7DataHandler2 : ConnectableBasePolling
+    public class S7DataHandler2 : ReadWriteBase
     {
         string sC = nameof(S7DataHandler2);
 
@@ -76,7 +76,7 @@ namespace DSG.Drivers.Siemens
                 var aConn = ConnectionString.Split(splitter, StringSplitOptions.TrimEntries);
                 if (aConn.Length != 3)
                 {
-                    LogMan.Error(sC, sM, $"{ObjectID} : Connection String Error : '{ConnectionString}' :  expected '{ConnectionTemplate}'");
+                    LogMan.Error(sC, sM, $"{ConnectionName} : Connection String Error : '{ConnectionString}' :  expected '{ConnectionTemplate}'");
                 }
                 string sIP = aConn[0];
                 int iRack = Convert.ToInt32(aConn[1]);
@@ -85,7 +85,7 @@ namespace DSG.Drivers.Siemens
                 if (result != 0)
                 {
                     // Bug on 
-                    LogMan.Warning(sC, sM, $"{ObjectID} : Connection Refused, retry");
+                    LogMan.Warning(sC, sM, $"{ConnectionName} : Connection Refused, retry");
                     await Task.Delay(500).ConfigureAwait(false);
                     result = s7client.ConnectTo(sIP, iRack, iSlot);
                     if (result != 0)

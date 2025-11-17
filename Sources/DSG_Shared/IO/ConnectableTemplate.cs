@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace DSG_Drivers.Siemens
 {
-    internal class ConnectableTemplate : ConnectableBasePolling
+    internal class ConnectableTemplate : ReadWriteBase
     {
         string sC = nameof(ConnectableTemplate);
 

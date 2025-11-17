@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DSG.Base
 {
-    public interface ICreatable : IDisposable
+    public interface CreataInterface : IDisposable
     {
         /// <summary>
         /// Alloc resources <br/>

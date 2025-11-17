@@ -44,13 +44,17 @@
             label3 = new Label();
             textBox3 = new TextBox();
             label2 = new Label();
-            tabPage2 = new TabPage();
+            tpS7 = new TabPage();
             tableLayoutPanel2 = new TableLayoutPanel();
             lbPlc = new ListBox();
             pgPLC = new PropertyGrid();
             panel2 = new Panel();
-            button2 = new Button();
-            btnPlcTest = new Button();
+            label4 = new Label();
+            tbS7Conn = new TextBox();
+            tbS7DB = new TextBox();
+            label5 = new Label();
+            btnPlcStop = new Button();
+            btnPlcStart = new Button();
             lbLog = new ListBox();
             oTimerLog = new System.Windows.Forms.Timer(components);
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -61,7 +65,7 @@
             tpSerial.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
-            tabPage2.SuspendLayout();
+            tpS7.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             panel2.SuspendLayout();
             SuspendLayout();
@@ -87,7 +91,7 @@
             // tcMain
             // 
             tcMain.Controls.Add(tpSerial);
-            tcMain.Controls.Add(tabPage2);
+            tcMain.Controls.Add(tpS7);
             tcMain.Dock = DockStyle.Fill;
             tcMain.Location = new Point(0, 0);
             tcMain.Name = "tcMain";
@@ -227,16 +231,16 @@
             label2.TabIndex = 5;
             label2.Text = "COM-B";
             // 
-            // tabPage2
+            // tpS7
             // 
-            tabPage2.Controls.Add(tableLayoutPanel2);
-            tabPage2.Location = new Point(4, 24);
-            tabPage2.Name = "tabPage2";
-            tabPage2.Padding = new Padding(3);
-            tabPage2.Size = new Size(1002, 238);
-            tabPage2.TabIndex = 1;
-            tabPage2.Text = "tabPage2";
-            tabPage2.UseVisualStyleBackColor = true;
+            tpS7.Controls.Add(tableLayoutPanel2);
+            tpS7.Location = new Point(4, 24);
+            tpS7.Name = "tpS7";
+            tpS7.Padding = new Padding(3);
+            tpS7.Size = new Size(1002, 238);
+            tpS7.TabIndex = 1;
+            tpS7.Text = "S7 Test";
+            tpS7.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel2
             // 
@@ -275,32 +279,71 @@
             // 
             // panel2
             // 
-            panel2.Controls.Add(button2);
-            panel2.Controls.Add(btnPlcTest);
+            panel2.Controls.Add(label4);
+            panel2.Controls.Add(tbS7Conn);
+            panel2.Controls.Add(tbS7DB);
+            panel2.Controls.Add(label5);
+            panel2.Controls.Add(btnPlcStop);
+            panel2.Controls.Add(btnPlcStart);
             panel2.Dock = DockStyle.Fill;
             panel2.Location = new Point(3, 3);
             panel2.Name = "panel2";
             panel2.Size = new Size(326, 226);
             panel2.TabIndex = 2;
             // 
-            // button2
+            // label4
             // 
-            button2.Location = new Point(26, 118);
-            button2.Name = "button2";
-            button2.Size = new Size(75, 23);
-            button2.TabIndex = 1;
-            button2.Text = "button2";
-            button2.UseVisualStyleBackColor = true;
+            label4.AutoSize = true;
+            label4.Location = new Point(19, 18);
+            label4.Name = "label4";
+            label4.Size = new Size(114, 15);
+            label4.TabIndex = 8;
+            label4.Text = "CONN (IP,Rack,Slot)";
             // 
-            // btnPlcTest
+            // tbS7Conn
             // 
-            btnPlcTest.Location = new Point(26, 14);
-            btnPlcTest.Name = "btnPlcTest";
-            btnPlcTest.Size = new Size(75, 23);
-            btnPlcTest.TabIndex = 0;
-            btnPlcTest.Text = "Test PLC";
-            btnPlcTest.UseVisualStyleBackColor = true;
-            btnPlcTest.Click += btnPlcTest_Click;
+            tbS7Conn.Location = new Point(145, 15);
+            tbS7Conn.Name = "tbS7Conn";
+            tbS7Conn.Size = new Size(165, 23);
+            tbS7Conn.TabIndex = 6;
+            tbS7Conn.Text = "192.168.17.37,0,0";
+            // 
+            // tbS7DB
+            // 
+            tbS7DB.Location = new Point(145, 56);
+            tbS7DB.Name = "tbS7DB";
+            tbS7DB.Size = new Size(165, 23);
+            tbS7DB.TabIndex = 7;
+            tbS7DB.Text = "10,0,800";
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(19, 59);
+            label5.Name = "label5";
+            label5.Size = new Size(120, 15);
+            label5.TabIndex = 9;
+            label5.Text = "DB (Num,Start,Legth)";
+            // 
+            // btnPlcStop
+            // 
+            btnPlcStop.Location = new Point(155, 188);
+            btnPlcStop.Name = "btnPlcStop";
+            btnPlcStop.Size = new Size(168, 23);
+            btnPlcStop.TabIndex = 2;
+            btnPlcStop.Text = "Stop";
+            btnPlcStop.UseVisualStyleBackColor = true;
+            btnPlcStop.Click += btnPlcStop_Click;
+            // 
+            // btnPlcStart
+            // 
+            btnPlcStart.Location = new Point(19, 188);
+            btnPlcStart.Name = "btnPlcStart";
+            btnPlcStart.Size = new Size(130, 23);
+            btnPlcStart.TabIndex = 0;
+            btnPlcStart.Text = "Start";
+            btnPlcStart.UseVisualStyleBackColor = true;
+            btnPlcStart.Click += btnPlcStart_Click;
             // 
             // lbLog
             // 
@@ -324,6 +367,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1010, 450);
             Controls.Add(splitContainer1);
+            DoubleBuffered = true;
             Name = "FormTester";
             Text = "Form1";
             splitContainer1.Panel1.ResumeLayout(false);
@@ -335,9 +379,10 @@
             tableLayoutPanel1.ResumeLayout(false);
             panel1.ResumeLayout(false);
             panel1.PerformLayout();
-            tabPage2.ResumeLayout(false);
+            tpS7.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
             panel2.ResumeLayout(false);
+            panel2.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -353,7 +398,7 @@
         private TextBox textBox3;
         private TextBox textBox2;
         private TextBox textBox1;
-        private TabPage tabPage2;
+        private TabPage tpS7;
         private Button btnSerStop;
         private Button bynSerStart;
         private PropertyGrid pgSer2;
@@ -365,7 +410,11 @@
         private ListBox lbPlc;
         private PropertyGrid pgPLC;
         private Panel panel2;
-        private Button button2;
-        private Button btnPlcTest;
+        private Button btnPlcStart;
+        private Button btnPlcStop;
+        private Label label4;
+        private TextBox tbS7Conn;
+        private TextBox tbS7DB;
+        private Label label5;
     }
 }

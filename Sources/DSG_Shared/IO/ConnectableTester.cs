@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace DSG.IO
 {
-    public class ConnectableTester : ConnectableBasePolling
+    public class ConnectableTester : ReadWriteBase
     {
         static readonly string sC=nameof(ConnectableTester);
 

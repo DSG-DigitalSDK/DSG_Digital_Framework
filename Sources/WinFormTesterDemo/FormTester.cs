@@ -3,6 +3,7 @@ using DSG.IO;
 using DSG.Log;
 using DSG_Streaming;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -15,6 +16,8 @@ namespace WinFormTesterDemo
         {
             InitializeComponent();
             LogMan.OnLogMessage += LogMan_OnLogMessage;
+           // MyExtensions.SetDoubleBuffered(lbLog);
+          //  MyExtensions.SetDoubleBuffered(lbPlc);
         }
 
         ConcurrentQueue<string> oQueueMessage = new();
@@ -146,59 +149,113 @@ namespace WinFormTesterDemo
 
         #endregion
 
-        private async void btnPlcTest_Click(object sender, EventArgs e)
+        #region PLC Test
+
+        DSG.Drivers.Siemens.S7DataHandler2? oS7Handler;
+        DSG.Drivers.Siemens.S7PlcDataItem? oS7DbItem;
+
+        public async Task PlcTestAsync()
         {
-            lbPlc.Items.Clear();
-            DSG.Drivers.Siemens.S7DataHandler oPLC = new ();
-            oPLC.ConnectionString = "192.168.17.37,0,0";
-            var item = new DSG.Drivers.Siemens.S7PlcDataItem()
+            string sM = nameof(PlcTestAsync);
+            try
             {
-                 Area = DSG.Drivers.Siemens.S7PlcArea.DB,
-                 DbNum  = 0,
-                 Length = 1,
-                 Offset = 0,
-            };
-            oPLC.ReadDataListTemplate.Add(item);
-            oPLC.EnableReader = false;
-            pgPLC.SelectedObject = oPLC;
-            var res1 = await oPLC.CreateAsync();
-            if (res1.HasError)
-            {
-                return;
-            }
-            await Task.Run(async () =>
-            {
-                for (int i = 0; i <= 50; i++)
+                if( oS7Handler != null )
+                    await oS7Handler.DestroyAsync();
+                oS7Handler = new();
+                oS7Handler.ConnectionString = tbS7Conn.Text;
+                var oDB = tbS7DB.Text.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                if (oDB.Length != 3)
                 {
-                    for (int l = 1; l <= 100; l++)
+                    LogMan.Error(sC, sM, "Invalid DB data");
+                    return;
+                }
+                oS7DbItem = new DSG.Drivers.Siemens.S7PlcDataItem()
+                {
+                    Area = DSG.Drivers.Siemens.S7PlcArea.DB,
+                    DbNum = int.Parse(oDB[0]),
+                    Offset = int.Parse(oDB[1]),
+                    Length = int.Parse(oDB[2])
+                };
+                oS7Handler.ReadDataListTemplate.Add(oS7DbItem);
+                oS7Handler.EnableReader = true;
+                oS7Handler.PollingReadMs = 500;
+                pgPLC.SelectedObject = oS7Handler;
+                oS7Handler.DataReaded += ((s, oArgs) =>
+                {
+                    Invoke(() =>
                     {
-                        item.DbNum = i;
-                        item.Length = l;
-                        var res2 = await oPLC.ReadDataAsync();
-                        if (res2.Valid)
+                        SuspendLayout();
+                        try
                         {
-                            Invoke(() =>
+                            lbPlc.Items.Clear();
+                            if (oArgs.ResultList.FirstOrDefault()?.Tag is List<S7PlcDataItem> dataList)
                             {
-                                if (res2.Tag is List<S7PlcDataItem> dataList)
+                                foreach (var item in dataList)
                                 {
-                                    foreach (var item in dataList)
+                                    var sb = new StringBuilder(4000);
+                                    foreach (var buff in item.Data)
                                     {
-                                        var sb = new StringBuilder(4000);
-                                        foreach (var buff in item.Data)
+                                        if (buff < 16)
+                                            sb.Append($"{buff},");
+                                        else
+                                            sb.Append($"{(char)buff},");
+                                        if (sb.Length > 32)
                                         {
-                                            if (buff < 16)
-                                                sb.Append($"{buff},");
-                                            else
-                                                sb.Append($"{(char)buff},");
+                                            lbPlc.Items.Add(sb.ToString());
+                                            sb.Clear();
                                         }
-                                        lbPlc.Items.Add(sb.ToString());
                                     }
                                 }
-                            });
+                            }
                         }
-                    }
+                        finally
+                        {
+                            ResumeLayout();
+                        }
+                    });
+                });
+                if ((await oS7Handler.CreateAsync()).HasError)
+                {
+                    return;
                 }
-            });
+                if ((await oS7Handler.ConnectAsync()).HasError)
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMan.Exception(sC, sM, ex);
+            }
+        }
+
+        #endregion
+
+        private async void btnPlcStart_Click(object sender, EventArgs e)
+        {
+            await PlcTestAsync();
+            pgPLC.SelectedObject = oS7Handler;
+        }
+
+        
+
+        private async void btnPlcStop_Click(object sender, EventArgs e)
+        {
+            await oS7Handler?.DestroyAsync();
+        }
+    }
+
+    public static class MyExtensions
+    {
+
+        public static void SetDoubleBuffered(this Control panel)
+        {
+            typeof(Panel).InvokeMember(
+               "DoubleBuffered",
+               BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
+               null,
+               panel,
+               new object[] { true });
         }
     }
 }
